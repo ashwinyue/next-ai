@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +48,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 
 	var req CreateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
+		BadRequest(c, "$1"+err.Error())
 		return
 	}
 
@@ -157,7 +156,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 
 	var req UpdateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
+		BadRequest(c, "$1"+err.Error())
 		return
 	}
 

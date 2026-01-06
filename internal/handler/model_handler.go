@@ -2,8 +2,6 @@
 package handler
 
 import (
-	"net/http"
-
 	dataModel "github.com/ashwinyue/next-ai/internal/model"
 	"github.com/ashwinyue/next-ai/internal/service/model"
 	"github.com/gin-gonic/gin"

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/ashwinyue/next-ai/internal/service/initialization"
 	"github.com/gin-gonic/gin"
@@ -58,7 +56,7 @@ func (h *InitializationHandler) UpdateKBConfig(c *gin.Context) {
 
 	var req UpdateKBConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -109,7 +107,7 @@ func (h *InitializationHandler) InitializeByKB(c *gin.Context) {
 
 	var req InitializeByKBRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -159,7 +157,7 @@ type TestEmbeddingResponse = initialization.TestEmbeddingResponse
 func (h *InitializationHandler) TestEmbedding(c *gin.Context) {
 	var req TestEmbeddingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -209,7 +207,7 @@ type CheckOllamaModelsRequest = initialization.CheckOllamaModelsRequest
 func (h *InitializationHandler) CheckOllamaModels(c *gin.Context) {
 	var req CheckOllamaModelsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -240,7 +238,7 @@ type CheckRemoteModelResponse = initialization.CheckRemoteModelResponse
 func (h *InitializationHandler) CheckRemoteModel(c *gin.Context) {
 	var req CheckRemoteModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -271,7 +269,7 @@ type CheckRerankModelResponse = initialization.CheckRerankModelResponse
 func (h *InitializationHandler) CheckRerankModel(c *gin.Context) {
 	var req CheckRerankModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 

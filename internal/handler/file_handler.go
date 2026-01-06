@@ -44,7 +44,7 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
+		BadRequest(c, "$1"+err.Error())
 		return
 	}
 

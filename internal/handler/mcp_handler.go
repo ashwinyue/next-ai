@@ -2,8 +2,6 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/ashwinyue/next-ai/internal/service/mcp"
 	"github.com/gin-gonic/gin"
@@ -36,7 +34,7 @@ func (h *MCPServiceHandler) CreateMCPService(c *gin.Context) {
 
 	var req CreateMCPServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -120,7 +118,7 @@ func (h *MCPServiceHandler) UpdateMCPService(c *gin.Context) {
 
 	var req UpdateMCPServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 

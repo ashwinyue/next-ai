@@ -2,7 +2,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/ashwinyue/next-ai/internal/model"
@@ -34,7 +33,7 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 
 	var tenant model.Tenant
 	if err := c.ShouldBindJSON(&tenant); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -115,7 +114,7 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 
 	var tenant model.Tenant
 	if err := c.ShouldBindJSON(&tenant); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -217,7 +216,7 @@ func (h *TenantHandler) UpdateTenantConfig(c *gin.Context) {
 
 	var config interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
+		BadRequest(c, err.Error())
 		return
 	}
 
