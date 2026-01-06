@@ -1,0 +1,15 @@
+github.com/cloudwego/eino v0.7.17/go.mod h1:nA8Vacmuqv3pqKBQbTWENBLQ8MmGmPt/WqiyLeB8ohQ=
+github.com/cloudwego/eino-ext/components/document/parser/docx v0.0.0-20260106124928-46864ab11d94/go.mod h1:7Nfu+tf9OkdI8Fy5VRi9Xap13OGVV8SXlpj+GHbaWQ8=
+github.com/cloudwego/eino-ext/components/document/parser/pdf v0.0.0-20260106124928-46864ab11d94/go.mod h1:kHC3xkGM/gv3IHpOk33p75BfBaEIYATOs2XmYFKffcs=
+github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive v0.0.0-20260106124928-46864ab11d94/go.mod h1:9R0RQrQSpg1JaNnRtw7+RfRAAv0HgdE348YnrlZ6coo=
+github.com/cloudwego/eino-ext/components/embedding/dashscope v0.0.0-20260106124928-46864ab11d94/go.mod h1:ekJmA+GLD9vJyZNeODZDBFMiJ92Suy6nF0OY42X3sao=
+github.com/cloudwego/eino-ext/components/model/openai v0.1.7/go.mod h1:J9X399p5Vd0cvDg7ShVrTv7AbEf4ONfjfD6cNsHam+o=
+github.com/cloudwego/eino-ext/components/retriever/es8 v0.0.0-20260106124928-46864ab11d94/go.mod h1:H4kNmiTe2irnvipVNIP4q8yqXf2fZ6v24krvQYBtYb8=
+github.com/cloudwego/eino-ext/components/tool/duckduckgo/v2 v2.0.0-20260106124928-46864ab11d94/go.mod h1:Np0BXy/9hPRu3wCgn+ij6L7YsjFcybVzg1k7uYOXh0M=
+github.com/elastic/go-elasticsearch/v8 v8.16.0/go.mod h1:lGMlgKIbYoRvay3xWBeKahAiJOgmFDsjZC39nmO3H64=
+github.com/gin-gonic/gin v1.11.0/go.mod h1:+iq/FyxlGzII0KHiBGjuNn4UNENUlKbGlNmc+W50Dls=
+github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/redis/go-redis/v9 v9.17.2/go.mod h1:u410H11HMLoB+TP67dz8rL9s6QW2j76l0//kSOd3370=
+github.com/spf13/viper v1.21.0/go.mod h1:P0lhsswPGWD/1lZJ9ny3fYnVqxiegrlNrEmgLjbTCAY=
+gorm.io/driver/postgres v1.6.0/go.mod h1:vUw0mrGgrTK+uPHEhAdV4sfFELrByKVGnaVRkXDhtWo=
+gorm.io/gorm v1.31.1/go.mod h1:XyQVbO2k6YkOis7C2437jSit3SsDK72s7n7rsSHd+Gs=

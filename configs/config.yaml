@@ -1,0 +1,72 @@
+# Next-AI 配置文件
+
+app:
+  name: next-ai
+  environment: development
+  version: 1.0.0
+  debug: true
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  mode: debug
+  readTimeout: 30
+  writeTimeout: 30
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: ""
+  dbname: next_ai
+  sslmode: disable
+  maxOpenConns: 25
+  maxIdleConns: 5
+  maxLifetime: 300
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+# AI 模型配置
+ai:
+  # Provider: openai, alibaba, qwen, dashscope, deepseek
+  provider: openai
+
+  # OpenAI 配置
+  openai:
+    apiKey: ""
+    baseURL: https://api.openai.com/v1
+    model: gpt-4o-mini
+
+  # 阿里云配置
+  alibaba:
+    accessKeyId: ""
+    accessKeySecret: ""
+    region: cn-hangzhou
+    model: qwen-plus
+
+  # DeepSeek 配置
+  deepseek:
+    apiKey: ""
+    baseURL: https://api.deepseek.com/v1
+    model: deepseek-chat
+
+  # Embedding 配置
+  embedding:
+    # Provider: alibaba, openai
+    provider: alibaba
+    apiKey: ""      # 阿里云使用 accessKeySecret，OpenAI 使用 apiKey
+    model: text-embedding-v3
+    baseURL: ""
+    timeout: 30
+    dimensions: 1024
+
+# Elasticsearch 配置
+elastic:
+  host: http://localhost:9200
+  username: ""
+  password: ""
+  indexPrefix: next_ai
