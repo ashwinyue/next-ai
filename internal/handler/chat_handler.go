@@ -4,7 +4,9 @@ import (
 	"strconv"
 
 	"github.com/ashwinyue/next-ai/internal/service"
+	"github.com/ashwinyue/next-ai/internal/service/agent"
 	"github.com/ashwinyue/next-ai/internal/service/chat"
+	"github.com/ashwinyue/next-ai/internal/service/rag"
 	"github.com/gin-gonic/gin"
 )
 
@@ -215,4 +217,143 @@ func (h *ChatHandler) GenerateTitle(c *gin.Context) {
 	}
 
 	Success(c, gin.H{"title": title})
+}
+
+// ========== WeKnora API 兼容接口 ==========
+
+// KnowledgeChatRequest WeKnora 知识库聊天请求
+type KnowledgeChatRequest struct {
+	Query            string                 `json:"query" binding:"required"`
+	KnowledgeBaseIDs []string               `json:"knowledge_base_ids"`
+	KnowledgeIDs     []string               `json:"knowledge_ids"`
+	AgentEnabled     bool                   `json:"agent_enabled"`
+	AgentID          string                 `json:"agent_id"`
+	WebSearchEnabled bool                   `json:"web_search_enabled"`
+	SummaryModelID   string                 `json:"summary_model_id"`
+	MentionedItems   []MentionedItem        `json:"mentioned_items"`
+	DisableTitle     bool                   `json:"disable_title"`
+	Metadata         map[string]interface{} `json:"metadata"`
+}
+
+// MentionedItem 提及的项
+type MentionedItem struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	KbType string `json:"kb_type,omitempty"`
+}
+
+// KnowledgeChat 知识库聊天（WeKnora API 兼容）
+// POST /api/v1/knowledge-chat/:session_id
+func (h *ChatHandler) KnowledgeChat(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	var req KnowledgeChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// TODO: 实现知识库聊天逻辑
+	// 这需要调用 RAG 服务进行检索和生成
+
+	// 暂时返回基本响应
+	Success(c, gin.H{
+		"answer":       "知识库聊天功能正在开发中",
+		"session_id":   sessionID,
+		"query":        req.Query,
+		"sources":      []interface{}{},
+		"message_id":   "",
+		"stream_event": "",
+	})
+}
+
+// AgentChatRequest WeKnora 智能体聊天请求
+type AgentChatRequest struct {
+	Query            string                 `json:"query" binding:"required"`
+	AgentID          string                 `json:"agent_id"`
+	KnowledgeBaseIDs []string               `json:"knowledge_base_ids"`
+	WebSearchEnabled bool                   `json:"web_search_enabled"`
+	Metadata         map[string]interface{} `json:"metadata"`
+}
+
+// AgentChat 智能体聊天（WeKnora API 兼容）
+// POST /api/v1/agent-chat/:session_id
+func (h *ChatHandler) AgentChat(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	var req AgentChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// 如果指定了 Agent ID，使用 Agent 运行
+	if req.AgentID != "" {
+		runReq := agent.RunRequest{
+			Query:     req.Query,
+			SessionID: sessionID,
+		}
+
+		resp, err := h.svc.Agent.Run(c.Request.Context(), req.AgentID, &runReq)
+		if err != nil {
+			Error(c, err)
+			return
+		}
+
+		Success(c, resp)
+		return
+	}
+
+	// 暂时返回基本响应
+	Success(c, gin.H{
+		"answer":     "智能体聊天功能正在开发中",
+		"session_id": sessionID,
+		"query":      req.Query,
+	})
+}
+
+// KnowledgeSearchRequest WeKnora 知识搜索请求
+type KnowledgeSearchRequest struct {
+	Query          string `json:"query" binding:"required"`
+	TopK           int    `json:"top_k"`
+	EnableOptimize bool   `json:"enable_optimize"`
+	EnableRerank   bool   `json:"enable_rerank"`
+}
+
+// KnowledgeSearch 知识搜索（WeKnora API 兼容）
+// POST /api/v1/knowledge-search
+func (h *ChatHandler) KnowledgeSearch(c *gin.Context) {
+	var req KnowledgeSearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// 设置默认值
+	if req.TopK <= 0 {
+		req.TopK = 5
+	}
+
+	// 创建 RAG 服务（与 RAGHandler 相同的方式）
+	ragSvc := rag.NewService(
+		h.svc.ChatModel,
+		h.svc.Retriever,
+		h.svc.Query,
+		h.svc.Rerankers,
+	)
+
+	// 调用 RAG 服务进行检索
+	result, err := ragSvc.Retrieve(c.Request.Context(), &rag.RetrieveRequest{
+		Query:          req.Query,
+		TopK:           req.TopK,
+		EnableOptimize: req.EnableOptimize,
+		EnableRerank:   req.EnableRerank,
+	})
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
 }

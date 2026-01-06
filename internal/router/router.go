@@ -52,6 +52,11 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			sessions.POST("/:id/title", h.Chat.GenerateTitle)
 		}
 
+		// WeKnora API 兼容 - 聊天接口
+		v1.POST("/knowledge-chat/:session_id", h.Chat.KnowledgeChat)
+		v1.POST("/agent-chat/:session_id", h.Chat.AgentChat)
+		v1.POST("/knowledge-search", h.Chat.KnowledgeSearch)
+
 		// Messages 消息管理（独立接口）
 		messages := v1.Group("/messages")
 		{
