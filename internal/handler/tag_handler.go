@@ -192,5 +192,5 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{Code: 0, Message: "删除成功"})
+	Success(c, nil)
 }

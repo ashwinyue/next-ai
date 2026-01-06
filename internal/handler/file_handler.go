@@ -2,7 +2,6 @@ package handler
 
 import (
 	"io"
-	"net/http"
 	"strconv"
 
 	filesvc "github.com/ashwinyue/next-ai/internal/service/file"

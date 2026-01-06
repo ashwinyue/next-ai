@@ -51,7 +51,7 @@ func (h *ModelHandler) CreateModel(c *gin.Context) {
 
 	var req CreateModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -66,11 +66,11 @@ func (h *ModelHandler) CreateModel(c *gin.Context) {
 	}
 
 	if err := h.svc.CreateModel(ctx, m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, m)
+	Created(c, m)
 }
 
 // GetModel 获取模型详情
@@ -87,7 +87,7 @@ func (h *ModelHandler) GetModel(c *gin.Context) {
 
 	m, err := h.svc.GetModelByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		Error(c, err)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *ModelHandler) GetModel(c *gin.Context) {
 		m.Parameters.BaseURL = ""
 	}
 
-	c.JSON(http.StatusOK, m)
+	Success(c, m)
 }
 
 // ListModels 列出模型
@@ -126,7 +126,7 @@ func (h *ModelHandler) ListModels(c *gin.Context) {
 
 	models, err := h.svc.ListModels(ctx, modelType, source)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, err)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (h *ModelHandler) ListModels(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"models": models})
+	Success(c, gin.H{"models": models})
 }
 
 // UpdateModel 更新模型
@@ -157,13 +157,13 @@ func (h *ModelHandler) UpdateModel(c *gin.Context) {
 	// 获取现有模型
 	m, err := h.svc.GetModelByID(ctx, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "model not found"})
+		Error(c, err)
 		return
 	}
 
 	var req UpdateModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -191,11 +191,11 @@ func (h *ModelHandler) UpdateModel(c *gin.Context) {
 	}
 
 	if err := h.svc.UpdateModel(ctx, m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, m)
+	Success(c, m)
 }
 
 // DeleteModel 删除模型
@@ -211,7 +211,7 @@ func (h *ModelHandler) DeleteModel(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.svc.DeleteModel(ctx, id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		Error(c, err)
 		return
 	}
 
@@ -229,5 +229,5 @@ func (h *ModelHandler) ListModelProviders(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	providers := h.svc.ListModelProviders(ctx)
-	c.JSON(http.StatusOK, gin.H{"providers": providers})
+	Success(c, gin.H{"providers": providers})
 }
