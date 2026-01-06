@@ -1,56 +1,93 @@
 package model
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"time"
+)
+
+// JSON 类型用于存储 JSONB 数据
+type JSON map[string]interface{}
+
+func (j JSON) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+func (j *JSON) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+func (JSON) GormDataType() string {
+	return "jsonb"
+}
 
 // KnowledgeBase 知识库
 type KnowledgeBase struct {
-	ID          string     `gorm:"primaryKey;size:36"`
-	Name        string     `gorm:"size:100;uniqueIndex"`
-	Description string     `gorm:"type:text"`
-	EmbedModel  string     `gorm:"size:50"`
-	IndexName   string     `gorm:"size:100;index"`
-	CreatedAt   time.Time  `gorm:"autoCreateTime"`
-	UpdatedAt   time.Time  `gorm:"autoUpdateTime"`
-	Documents   []Document `gorm:"foreignKey:KnowledgeBaseID"`
+	ID             string       `gorm:"type:varchar(36);primaryKey" json:"id"`
+	Name           string       `gorm:"type:varchar(255);not null;uniqueIndex" json:"name"`
+	Description    string       `gorm:"type:text" json:"description"`
+	IndexName      string       `gorm:"type:varchar(255);not null;index" json:"index_name"`
+	EmbeddingModel string       `gorm:"type:varchar(100)" json:"embedding_model"`
+	ChunkSize      int          `gorm:"type:int;default:512" json:"chunk_size"`
+	ChunkOverlap   int          `gorm:"type:int;default:50" json:"chunk_overlap"`
+	CreatedAt      time.Time    `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt      time.Time    `gorm:"autoUpdateTime" json:"updated_at"`
+	Documents      []Document   `gorm:"foreignKey:KnowledgeBaseID" json:"documents,omitempty"`
 }
 
 // Document 文档
 type Document struct {
-	ID             string         `gorm:"primaryKey;size:36"`
-	KnowledgeBaseID string        `gorm:"index;size:36"`
-	Title          string         `gorm:"size:255"`
-	FileName       string         `gorm:"size:255"`
-	FilePath       string         `gorm:"size:500"`
-	FileSize       int64          `gorm:"default:0"`
-	Status         string         `gorm:"size:20;index:default:pending"`
-	ChunkCount     int            `gorm:"default:0"`
-	ErrorMsg       string         `gorm:"type:text"`
-	CreatedAt      time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt      time.Time      `gorm:"autoUpdateTime"`
-	Chunks         []DocumentChunk `gorm:"foreignKey:DocumentID"`
+	ID              string         `gorm:"type:varchar(36);primaryKey" json:"id"`
+	KnowledgeBaseID string         `gorm:"type:varchar(36);not null;index" json:"knowledge_base_id"`
+	Title           string         `gorm:"type:varchar(500)" json:"title"`
+	FileName        string         `gorm:"type:varchar(500);not null" json:"file_name"`
+	FilePath        string         `gorm:"type:varchar(1000);not null" json:"file_path"`
+	FileSize        int64          `gorm:"type:bigint" json:"file_size"`
+	ContentType     string         `gorm:"type:varchar(100)" json:"content_type"`
+	Status          string         `gorm:"type:varchar(50);default:'pending';index" json:"status"`
+	Error           string         `gorm:"type:text" json:"error,omitempty"`
+	Metadata        JSON           `gorm:"type:jsonb" json:"metadata,omitempty"`
+	ChunkCount      int            `gorm:"type:int;default:0" json:"chunk_count"`
+	ProcessedAt     *time.Time     `gorm:"type:timestamp" json:"processed_at,omitempty"`
+	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	Chunks          []DocumentChunk `gorm:"foreignKey:DocumentID" json:"chunks,omitempty"`
 }
 
 // DocumentChunk 文档分块
 type DocumentChunk struct {
-	ID              string    `gorm:"primaryKey;size:36"`
-	DocumentID      string    `gorm:"index;size:36"`
-	ChunkIndex      int       `gorm:"index"`
-	Content         string    `gorm:"type:text"`
-	Embedding       string    `gorm:"type:text"` // 存储向量字符串
-	TokenCount      int       `gorm:"default:0"`
-	Metadata        string    `gorm:"type:jsonb"`
-	CreatedAt       time.Time `gorm:"autoCreateTime"`
+	ID              string    `gorm:"type:varchar(36);primaryKey" json:"id"`
+	DocumentID      string    `gorm:"type:varchar(36);not null;index" json:"document_id"`
+	KnowledgeBaseID string    `gorm:"type:varchar(36);not null;index" json:"knowledge_base_id"`
+	ChunkIndex      int       `gorm:"type:int;not null" json:"chunk_index"`
+	Content         string    `gorm:"type:text;not null" json:"content"`
+	Metadata        JSON      `gorm:"type:jsonb" json:"metadata,omitempty"`
+	VectorID        string    `gorm:"type:varchar(255);index" json:"vector_id,omitempty"`
+	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
+
+// DocumentStatus constants
+const (
+	DocumentStatusPending    = "pending"
+	DocumentStatusProcessing = "processing"
+	DocumentStatusCompleted  = "completed"
+	DocumentStatusFailed     = "failed"
+)
 
 // IndexMapping 索引映射
 type IndexMapping struct {
-	ID          string    `gorm:"primaryKey;size:36"`
-	IndexName   string    `gorm:"uniqueIndex;size:100"`
-	EmbedModel  string    `gorm:"size:50"`
-	Dimension   int       `gorm:"default:0"`
-	CreatedAt   time.Time `gorm:"autoCreateTime"`
+	ID        string    `gorm:"primaryKey;size:36"`
+	IndexName string    `gorm:"uniqueIndex;size:100"`
+	EmbedModel string   `gorm:"size:50"`
+	Dimension  int      `gorm:"default:0"`
+	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
 
+// TableName 指定表名
 func (KnowledgeBase) TableName() string {
 	return "knowledge_bases"
 }

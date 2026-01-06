@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/config"
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
-	"github.com/ashwinyue/next-rag/next-ai/internal/repository"
+	"github.com/ashwinyue/next-ai/internal/config"
+	"github.com/ashwinyue/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/google/uuid"
 )
@@ -40,11 +40,13 @@ type CreateKnowledgeBaseRequest struct {
 // CreateKnowledgeBase 创建知识库
 func (s *Service) CreateKnowledgeBase(ctx context.Context, req *CreateKnowledgeBaseRequest) (*model.KnowledgeBase, error) {
 	kb := &model.KnowledgeBase{
-		ID:          uuid.New().String(),
-		Name:        req.Name,
-		Description: req.Description,
-		EmbedModel:  req.EmbedModel,
-		IndexName:   "kb_" + uuid.New().String(),
+		ID:             uuid.New().String(),
+		Name:           req.Name,
+		Description:    req.Description,
+		EmbeddingModel: req.EmbedModel,
+		IndexName:      "kb_" + uuid.New().String(),
+		ChunkSize:      512,
+		ChunkOverlap:   50,
 	}
 
 	if err := s.repo.Knowledge.CreateKnowledgeBase(kb); err != nil {
@@ -87,7 +89,7 @@ func (s *Service) UpdateKnowledgeBase(ctx context.Context, id string, req *Creat
 
 	kb.Name = req.Name
 	kb.Description = req.Description
-	kb.EmbedModel = req.EmbedModel
+	kb.EmbeddingModel = req.EmbedModel
 
 	if err := s.repo.Knowledge.UpdateKnowledgeBase(kb); err != nil {
 		return nil, fmt.Errorf("failed to update knowledge base: %w", err)

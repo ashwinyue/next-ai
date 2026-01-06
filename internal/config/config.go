@@ -11,10 +11,12 @@ import (
 type Config struct {
 	App      AppConfig
 	Server   ServerConfig
+	Log      LogConfig
 	Database DatabaseConfig
 	Redis    RedisConfig
 	Elastic  ElasticConfig
 	AI       AIConfig
+	File     *FileConfig
 }
 
 // AppConfig 应用配置
@@ -32,6 +34,11 @@ type ServerConfig struct {
 	Mode        string
 	ReadTimeout int
 	WriteTimeout int
+}
+
+// LogConfig 日志配置
+type LogConfig struct {
+	Level string
 }
 
 // DatabaseConfig 数据库配置
@@ -107,6 +114,29 @@ type EmbeddingConfig struct {
 	Dimensions int
 }
 
+// FileConfig 文件存储配置
+type FileConfig struct {
+	Type   string            // local, minio, cos
+	Local  LocalFileConfig
+	MinIO  MinIOFileConfig
+}
+
+// LocalFileConfig 本地文件存储配置
+type LocalFileConfig struct {
+	BasePath  string
+	URLPrefix string
+}
+
+// MinIOFileConfig MinIO 文件存储配置
+type MinIOFileConfig struct {
+	Endpoint  string
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    string
+	URLPrefix string
+}
+
 var globalConfig *Config
 
 // Load 加载配置
@@ -175,6 +205,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.mode", "debug")
 	v.SetDefault("server.readTimeout", 30)
 	v.SetDefault("server.writeTimeout", 30)
+
+	// Log
+	v.SetDefault("log.level", "info")
 
 	// Database
 	v.SetDefault("database.host", "localhost")

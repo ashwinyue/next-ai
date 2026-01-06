@@ -12,7 +12,7 @@ import (
 
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-rag/next-ai/internal/repository"
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -205,7 +205,7 @@ func (m *StateManager) DeleteState(ctx context.Context, sessionID string) error 
 // GetConfig 获取配置
 func (m *StateManager) GetConfig() *Config {
 	m.mu.RLock()
-	defer m.RUnlock()
+	defer m.mu.RUnlock()
 	return m.config
 }
 

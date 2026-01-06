@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/service"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/faq"
+	"github.com/ashwinyue/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/service"
+	"github.com/ashwinyue/next-ai/internal/service/faq"
 	"github.com/gin-gonic/gin"
 )
 
@@ -148,4 +149,212 @@ func (h *FAQHandler) SearchFAQs(c *gin.Context) {
 	}
 
 	success(c, faqs)
+}
+
+// ========== FAQEntry 增强版方法 ==========
+
+// CreateEntry 创建FAQ条目
+func (h *FAQHandler) CreateEntry(c *gin.Context) {
+	var req faq.CreateEntryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	entry, err := h.svc.FAQEntry.CreateEntry(c.Request.Context(), &req)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	created(c, entry)
+}
+
+// GetEntry 获取FAQ条目
+func (h *FAQHandler) GetEntry(c *gin.Context) {
+	id := c.Param("id")
+
+	entry, err := h.svc.FAQEntry.GetEntry(c.Request.Context(), id)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, entry)
+}
+
+// ListEntries 列出FAQ条目
+func (h *FAQHandler) ListEntries(c *gin.Context) {
+	category := c.Query("category")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+
+	var isEnabled *bool
+	if enabled := c.Query("is_enabled"); enabled != "" {
+		if b, err := strconv.ParseBool(enabled); err == nil {
+			isEnabled = &b
+		}
+	}
+
+	entries, err := h.svc.FAQEntry.ListEntries(c.Request.Context(), &faq.ListEntriesRequest{
+		Category:  category,
+		IsEnabled: isEnabled,
+		Page:      page,
+		Size:      size,
+	})
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, entries)
+}
+
+// UpdateEntry 更新FAQ条目
+func (h *FAQHandler) UpdateEntry(c *gin.Context) {
+	id := c.Param("id")
+	var req faq.UpdateEntryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	entry, err := h.svc.FAQEntry.UpdateEntry(c.Request.Context(), id, &req)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, entry)
+}
+
+// DeleteEntry 删除FAQ条目
+func (h *FAQHandler) DeleteEntry(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.svc.FAQEntry.DeleteEntry(c.Request.Context(), id); err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// DeleteEntries 批量删除FAQ条目
+func (h *FAQHandler) DeleteEntries(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids" binding:"required,min=1"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	if err := h.svc.FAQEntry.DeleteEntries(c.Request.Context(), req.IDs); err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// SearchEntries 搜索FAQ条目
+func (h *FAQHandler) SearchEntries(c *gin.Context) {
+	keyword := c.Query("q")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "search keyword is required"})
+		return
+	}
+
+	limit := 10
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 50 {
+			limit = l
+		}
+	}
+
+	entries, err := h.svc.FAQEntry.SearchEntries(c.Request.Context(), keyword, limit)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, entries)
+}
+
+// UpdateEntryCategoryBatch 批量更新FAQ条目分类
+func (h *FAQHandler) UpdateEntryCategoryBatch(c *gin.Context) {
+	var req map[string]string
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	if err := h.svc.FAQEntry.UpdateEntryCategoryBatch(c.Request.Context(), req); err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, gin.H{"message": "分类更新成功"})
+}
+
+// UpdateEntryFieldsBatch 批量更新FAQ条目字段
+func (h *FAQHandler) UpdateEntryFieldsBatch(c *gin.Context) {
+	var req model.FAQEntryFieldsBatchUpdate
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	if err := h.svc.FAQEntry.UpdateEntryFieldsBatch(c.Request.Context(), &req); err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, gin.H{"message": "字段更新成功"})
+}
+
+// ExportEntries 导出FAQ条目
+func (h *FAQHandler) ExportEntries(c *gin.Context) {
+	category := c.Query("category")
+
+	data, err := h.svc.FAQEntry.ExportEntries(c.Request.Context(), category)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	c.Header("Content-Type", "application/json; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=faq_export.json")
+	c.Data(http.StatusOK, "application/json", data)
+}
+
+// BatchUpsert 批量导入FAQ条目
+func (h *FAQHandler) BatchUpsert(c *gin.Context) {
+	var req faq.BatchUpsertRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		return
+	}
+
+	resp, err := h.svc.FAQEntry.BatchUpsert(c.Request.Context(), &req)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, resp)
+}
+
+// GetImportProgress 获取导入进度
+func (h *FAQHandler) GetImportProgress(c *gin.Context) {
+	taskID := c.Param("task_id")
+
+	progress, err := h.svc.FAQEntry.GetImportProgress(c.Request.Context(), taskID)
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, progress)
 }

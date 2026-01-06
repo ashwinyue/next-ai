@@ -4,6 +4,7 @@
 package knowledge
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,10 +19,11 @@ import (
 	einoparser "github.com/cloudwego/eino/components/document/parser"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-rag/next-ai/internal/config"
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
-	"github.com/ashwinyue/next-rag/next-ai/internal/repository"
+	"github.com/ashwinyue/next-ai/internal/config"
+	"github.com/ashwinyue/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/google/uuid"
 )
 
@@ -218,21 +220,21 @@ func (p *DocumentProcessor) splitDocuments(ctx context.Context, docs []*schema.D
 
 	chunks := make([]*model.DocumentChunk, 0, len(splitDocs))
 	for i, splitDoc := range splitDocs {
-		metadata := map[string]interface{}{
+		metadata := model.JSON{
 			"chunk_index":         i,
 			"document_id":         doc.ID,
 			"document_title":      doc.Title,
 			"knowledge_base_id":   kb.ID,
 			"knowledge_base_name": kb.Name,
 		}
-		metadataJSON, _ := json.Marshal(metadata)
 
 		chunk := &model.DocumentChunk{
-			ID:         uuid.New().String(),
-			DocumentID: doc.ID,
-			ChunkIndex: i,
-			Content:    splitDoc.Content,
-			Metadata:   string(metadataJSON),
+			ID:              uuid.New().String(),
+			DocumentID:      doc.ID,
+			KnowledgeBaseID: kb.ID,
+			ChunkIndex:      i,
+			Content:         splitDoc.Content,
+			Metadata:        metadata,
 		}
 		chunks = append(chunks, chunk)
 	}
@@ -276,25 +278,55 @@ func (p *DocumentProcessor) indexChunks(ctx context.Context, kb *model.Knowledge
 		return fmt.Errorf("failed to ensure index: %w", err)
 	}
 
+	// 保存到数据库
+	if err := p.repo.Knowledge.CreateChunks(chunks); err != nil {
+		return fmt.Errorf("failed to save chunks to database: %w", err)
+	}
+
+	// 索引到 ES
 	for i, chunk := range chunks {
-		var metadata map[string]interface{}
-		if chunk.Metadata != "" {
-			json.Unmarshal([]byte(chunk.Metadata), &metadata)
+		metadata := make(map[string]interface{})
+		if chunk.Metadata != nil {
+			for k, v := range chunk.Metadata {
+				metadata[k] = v
+			}
 		}
 
 		docData := map[string]interface{}{
-			"content":     chunk.Content,
-			"document_id": doc.ID,
-			"chunk_index": chunk.ChunkIndex,
-			"metadata":    metadata,
+			"content":      chunk.Content,
+			"document_id":  doc.ID,
+			"chunk_index":  chunk.ChunkIndex,
+			"knowledge_base_id": kb.ID,
+			"metadata":     metadata,
 		}
 
 		if i < len(vectors) && len(vectors[i]) > 0 {
 			docData["content_vector"] = vectors[i]
 		}
 
-		log.Printf("Indexing chunk %s to %s", chunk.ID, indexName)
-		// TODO: 实际的 ES 索引操作
+		// 使用 ES Index API
+		data, err := json.Marshal(docData)
+		if err != nil {
+			log.Printf("Warning: failed to marshal chunk data: %v", err)
+			continue
+		}
+
+		req := esapi.IndexRequest{
+			Index:      indexName,
+			DocumentID: chunk.ID,
+			Body:       bytes.NewReader(data),
+		}
+
+		res, err := req.Do(ctx, esClient)
+		if err != nil {
+			log.Printf("Warning: failed to index chunk %s: %v", chunk.ID, err)
+			continue
+		}
+		res.Body.Close()
+
+		if res.IsError() {
+			log.Printf("Warning: ES error indexing chunk %s: %s", chunk.ID, res.String())
+		}
 	}
 
 	return nil
@@ -319,23 +351,67 @@ func newES8Client(cfg *config.Config) (*elasticsearch.Client, error) {
 }
 
 func ensureIndex(ctx context.Context, client *elasticsearch.Client, indexName string, dimensions int) error {
+	// 检查索引是否存在
 	res, err := client.Indices.Exists([]string{indexName})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check index existence: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
-		return nil
+		return nil // 索引已存在
 	}
 
 	if dimensions == 0 {
-		dimensions = 1536
+		dimensions = 1536 // 默认 OpenAI 维度
 	}
 
-	res, err = client.Indices.Create(indexName)
+	// 创建索引映射，支持向量字段
+	mapping := map[string]interface{}{
+		"mappings": map[string]interface{}{
+			"properties": map[string]interface{}{
+				"content": map[string]interface{}{
+					"type": "text",
+				},
+				"content_vector": map[string]interface{}{
+					"type":      "dense_vector",
+					"dims":      dimensions,
+					"index":     true,
+					"similarity": "cosine",
+				},
+				"document_id": map[string]interface{}{
+					"type": "keyword",
+				},
+				"chunk_index": map[string]interface{}{
+					"type": "integer",
+				},
+				"knowledge_base_id": map[string]interface{}{
+					"type": "keyword",
+				},
+				"metadata": map[string]interface{}{
+					"type": "object",
+				},
+			},
+		},
+		"settings": map[string]interface{}{
+			"number_of_shards":   1,
+			"number_of_replicas": 0,
+		},
+	}
+
+	mappingData, err := json.Marshal(mapping)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal mapping: %w", err)
+	}
+
+	req := esapi.IndicesCreateRequest{
+		Index: indexName,
+		Body:  bytes.NewReader(mappingData),
+	}
+
+	res, err = req.Do(ctx, client)
+	if err != nil {
+		return fmt.Errorf("failed to create index: %w", err)
 	}
 	defer res.Body.Close()
 
@@ -343,6 +419,7 @@ func ensureIndex(ctx context.Context, client *elasticsearch.Client, indexName st
 		return fmt.Errorf("failed to create index: %s", res.String())
 	}
 
+	log.Printf("Index %s created with %d dimensions", indexName, dimensions)
 	return nil
 }
 

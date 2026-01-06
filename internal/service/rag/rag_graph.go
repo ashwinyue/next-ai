@@ -11,8 +11,8 @@ import (
 	"github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/query"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/rerank"
+	"github.com/ashwinyue/next-ai/internal/service/query"
+	"github.com/ashwinyue/next-ai/internal/service/rerank"
 )
 
 // ========== RAG 状态 ==========

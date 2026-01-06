@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/service"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/knowledge"
+	"github.com/ashwinyue/next-ai/internal/service"
+	"github.com/ashwinyue/next-ai/internal/service/knowledge"
 	"github.com/gin-gonic/gin"
 )
 

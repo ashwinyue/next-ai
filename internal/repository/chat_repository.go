@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -66,4 +66,40 @@ func (r *ChatRepository) GetMessagesBySessionID(sessionID string) ([]*model.Chat
 	var messages []*model.ChatMessage
 	err := r.db.Where("session_id = ?", sessionID).Order("created_at ASC").Find(&messages).Error
 	return messages, err
+}
+
+// GetRecentMessagesBySession 获取会话最近的 N 条消息
+func (r *ChatRepository) GetRecentMessagesBySession(sessionID string, limit int) ([]*model.ChatMessage, error) {
+	var messages []*model.ChatMessage
+	err := r.db.Where("session_id = ?", sessionID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&messages).Error
+	return messages, err
+}
+
+// GetMessagesBySessionBeforeTime 获取会话指定时间之前的消息
+func (r *ChatRepository) GetMessagesBySessionBeforeTime(sessionID string, beforeTime string, limit int) ([]*model.ChatMessage, error) {
+	var messages []*model.ChatMessage
+	query := r.db.Where("session_id = ?", sessionID)
+	if beforeTime != "" {
+		query = query.Where("created_at < ?", beforeTime)
+	}
+	err := query.Order("created_at DESC").Limit(limit).Find(&messages).Error
+	return messages, err
+}
+
+// GetMessageByID 获取单条消息
+func (r *ChatRepository) GetMessageByID(messageID string) (*model.ChatMessage, error) {
+	var message model.ChatMessage
+	err := r.db.Where("id = ?", messageID).First(&message).Error
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+// DeleteMessage 删除消息
+func (r *ChatRepository) DeleteMessage(messageID string) error {
+	return r.db.Delete(&model.ChatMessage{}, "id = ?", messageID).Error
 }

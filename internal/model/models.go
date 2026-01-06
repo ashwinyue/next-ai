@@ -12,4 +12,7 @@ var AllModels = []interface{}{
 	&IndexMapping{},
 	&Tool{},
 	&FAQ{},
+	&KnowledgeTag{},
+	&User{},
+	&AuthToken{},
 }

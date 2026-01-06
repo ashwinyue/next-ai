@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
-	"github.com/ashwinyue/next-rag/next-ai/internal/repository"
+	"github.com/ashwinyue/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/google/uuid"
 )
 

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/model"
 	"gorm.io/gorm"
 )
 

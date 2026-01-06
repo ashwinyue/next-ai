@@ -9,12 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/config"
-	"github.com/ashwinyue/next-rag/next-ai/internal/database"
-	"github.com/ashwinyue/next-rag/next-ai/internal/handler"
-	"github.com/ashwinyue/next-rag/next-ai/internal/repository"
-	"github.com/ashwinyue/next-rag/next-ai/internal/router"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service"
+	"github.com/ashwinyue/next-ai/internal/config"
+	"github.com/ashwinyue/next-ai/internal/handler"
+	"github.com/ashwinyue/next-ai/internal/repository"
+	"github.com/ashwinyue/next-ai/internal/router"
+	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -35,7 +34,7 @@ func main() {
 	gin.SetMode(cfg.Server.Mode)
 
 	// 初始化数据库
-	db, err := database.New(cfg)
+	db, err := repository.NewDB(cfg)
 	if err != nil {
 		log.Fatalf("Failed to init database: %v", err)
 	}
@@ -60,7 +59,7 @@ func main() {
 	handlers := handler.NewHandlers(services)
 
 	// 初始化路由
-	r := router.SetupRouter(handlers)
+	r := router.SetupRouter(handlers, services)
 
 	// 创建 HTTP 服务器
 	srv := &http.Server{

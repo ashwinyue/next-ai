@@ -1,20 +1,21 @@
 package router
 
 import (
-	"github.com/ashwinyue/next-rag/next-ai/internal/handler"
-	"github.com/ashwinyue/next-rag/next-ai/internal/middleware"
+	"github.com/ashwinyue/next-ai/internal/handler"
+	"github.com/ashwinyue/next-ai/internal/middleware"
+	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRouter 设置路由
-func SetupRouter(h *handler.Handlers) *gin.Engine {
+func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 	r := gin.New()
 
 	// 中间件
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.LoggingMiddleware())
 	r.Use(middleware.CORSMiddleware())
-	r.Use(middleware.AuthMiddleware())
+	r.Use(middleware.AuthMiddleware(svc))
 
 	// 健康检查
 	r.GET("/health", func(c *gin.Context) {
@@ -24,6 +25,20 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 	// API v1
 	v1 := r.Group("/api/v1")
 	{
+		// Auth 认证（公开路由）
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/register", h.Auth.Register)
+			auth.POST("/login", h.Auth.Login)
+			auth.POST("/refresh", h.Auth.RefreshToken)
+			auth.GET("/validate", h.Auth.ValidateToken)
+
+			// 需要认证的路由
+			auth.POST("/logout", h.Auth.Logout)
+			auth.GET("/me", h.Auth.GetCurrentUser)
+			auth.POST("/change-password", h.Auth.ChangePassword)
+		}
+
 		// Chat 聊天
 		chats := v1.Group("/chats")
 		{
@@ -34,6 +49,15 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 			chats.DELETE("/:id", h.Chat.DeleteSession)
 			chats.POST("/:id/messages", h.Chat.SendMessage)
 			chats.GET("/:id/messages", h.Chat.GetMessages)
+			chats.POST("/:id/title", h.Chat.GenerateTitle)
+		}
+
+		// Messages 消息管理（独立接口）
+		messages := v1.Group("/messages")
+		{
+			messages.GET("/:session_id/load", h.Chat.LoadMessages)
+			messages.GET("/:id", h.Chat.GetMessage)
+			messages.DELETE("/:session_id/:id", h.Chat.DeleteMessage)
 		}
 
 		// Agent 智能体
@@ -42,10 +66,12 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 			agents.POST("", h.Agent.CreateAgent)
 			agents.GET("", h.Agent.ListAgents)
 			agents.GET("/active", h.Agent.ListActiveAgents)
+			agents.GET("/placeholders", h.Agent.GetPlaceholders)
 			agents.GET("/:id", h.Agent.GetAgent)
 			agents.GET("/:id/config", h.Agent.GetAgentConfig)
 			agents.PUT("/:id", h.Agent.UpdateAgent)
 			agents.DELETE("/:id", h.Agent.DeleteAgent)
+			agents.POST("/:id/copy", h.Agent.CopyAgent)
 			agents.POST("/:id/run", h.Agent.RunAgent)
 			agents.POST("/:id/stream", h.Agent.StreamAgent)
 		}
@@ -60,6 +86,18 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 			kb.DELETE("/:id", h.Knowledge.DeleteKnowledgeBase)
 			kb.POST("/:kb_id/documents", h.Knowledge.UploadDocument)
 			kb.GET("/:kb_id/documents", h.Knowledge.ListDocuments)
+
+			// 分块管理
+			kb.GET("/:kb_id/chunks", h.Chunk.ListChunksByKnowledgeBaseID)
+			kb.DELETE("/:kb_id/chunks", h.Chunk.DeleteChunksByKnowledgeBaseID)
+
+			// 标签管理
+			kb.POST("/:id/tags", h.Tag.CreateTag)
+			kb.GET("/:id/tags", h.Tag.ListTags)
+			kb.GET("/:id/tags/all", h.Tag.GetAllTags)
+			kb.GET("/:id/tags/:tag_id", h.Tag.GetTag)
+			kb.PUT("/:id/tags/:tag_id", h.Tag.UpdateTag)
+			kb.DELETE("/:id/tags/:tag_id", h.Tag.DeleteTag)
 		}
 
 		// Document 文档
@@ -68,6 +106,17 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 			docs.GET("/:id", h.Knowledge.GetDocument)
 			docs.DELETE("/:id", h.Knowledge.DeleteDocument)
 			docs.POST("/:id/process", h.Knowledge.ProcessDocument)
+
+			// 分块管理
+			docs.DELETE("/:doc_id/chunks", h.Chunk.DeleteChunksByDocumentID)
+		}
+
+		// Chunk 分块
+		chunks := v1.Group("/chunks")
+		{
+			chunks.GET("/:id", h.Chunk.GetChunkByID)
+			chunks.PUT("/:id", h.Chunk.UpdateChunk)
+			chunks.DELETE("/:id", h.Chunk.DeleteChunk)
 		}
 
 		// Index 索引管理
@@ -99,11 +148,116 @@ func SetupRouter(h *handler.Handlers) *gin.Engine {
 			faqs.DELETE("/:id", h.FAQ.DeleteFAQ)
 		}
 
+		// FAQ Entry 增强版
+		faqEntries := v1.Group("/faq-entries")
+		{
+			faqEntries.POST("", h.FAQ.CreateEntry)
+			faqEntries.GET("", h.FAQ.ListEntries)
+			faqEntries.GET("/search", h.FAQ.SearchEntries)
+			faqEntries.GET("/export", h.FAQ.ExportEntries)
+			faqEntries.POST("/batch", h.FAQ.BatchUpsert)
+			faqEntries.GET("/import/:task_id/progress", h.FAQ.GetImportProgress)
+			faqEntries.PUT("/categories/batch", h.FAQ.UpdateEntryCategoryBatch)
+			faqEntries.PUT("/fields/batch", h.FAQ.UpdateEntryFieldsBatch)
+			faqEntries.DELETE("/batch", h.FAQ.DeleteEntries)
+			faqEntries.GET("/:id", h.FAQ.GetEntry)
+			faqEntries.PUT("/:id", h.FAQ.UpdateEntry)
+			faqEntries.DELETE("/:id", h.FAQ.DeleteEntry)
+		}
+
 		// RAG 检索
 		ragGroup := v1.Group("/rag")
 		{
 			ragGroup.POST("/retrieve", h.RAG.Retrieve)
 			ragGroup.GET("/search", h.RAG.RetrieveSimple)
+		}
+
+		// Initialization 初始化
+		initGroup := v1.Group("/initialization")
+		{
+			initGroup.GET("/system/info", h.Initialization.GetSystemInfo)
+			initGroup.GET("/ollama/status", h.Initialization.CheckOllamaStatus)
+			initGroup.GET("/ollama/models", h.Initialization.ListOllamaModels)
+			initGroup.POST("/ollama/models/check", h.Initialization.CheckOllamaModels)
+			initGroup.POST("/test/embedding", h.Initialization.TestEmbedding)
+			initGroup.POST("/models/remote/check", h.Initialization.CheckRemoteModel)
+			initGroup.POST("/models/rerank/check", h.Initialization.CheckRerankModel)
+			initGroup.GET("/kb/:kbId/config", h.Initialization.GetKBConfig)
+			initGroup.PUT("/kb/:kbId/config", h.Initialization.UpdateKBConfig)
+			initGroup.POST("/kb/:kbId", h.Initialization.InitializeByKB)
+		}
+
+		// Model 模型管理
+		models := v1.Group("/models")
+		{
+			models.POST("", h.Model.CreateModel)
+			models.GET("", h.Model.ListModels)
+			models.GET("/providers", h.Model.ListModelProviders)
+			models.GET("/:id", h.Model.GetModel)
+			models.PUT("/:id", h.Model.UpdateModel)
+			models.DELETE("/:id", h.Model.DeleteModel)
+		}
+
+		// Evaluation 评估
+		eval := v1.Group("/evaluations")
+		{
+			eval.POST("", h.Evaluation.CreateEvaluation)
+			eval.GET("", h.Evaluation.ListEvaluations)
+			eval.GET("/result", h.Evaluation.GetEvaluationResult)
+			eval.DELETE("/:id", h.Evaluation.DeleteEvaluation)
+			eval.POST("/:id/cancel", h.Evaluation.CancelEvaluation)
+		}
+
+		// MCP 服务管理
+		mcpServices := v1.Group("/mcp-services")
+		{
+			mcpServices.POST("", h.MCPService.CreateMCPService)
+			mcpServices.GET("", h.MCPService.ListMCPServices)
+			mcpServices.GET("/:id", h.MCPService.GetMCPService)
+			mcpServices.PUT("/:id", h.MCPService.UpdateMCPService)
+			mcpServices.DELETE("/:id", h.MCPService.DeleteMCPService)
+			mcpServices.POST("/:id/test", h.MCPService.TestMCPService)
+			mcpServices.GET("/:id/tools", h.MCPService.GetMCPServiceTools)
+			mcpServices.GET("/:id/resources", h.MCPService.GetMCPServiceResources)
+		}
+
+		// Tenant 租户管理
+		tenants := v1.Group("/tenants")
+		{
+			tenants.POST("", h.Tenant.CreateTenant)
+			tenants.GET("", h.Tenant.ListTenants)
+			tenants.GET("/:id", h.Tenant.GetTenant)
+			tenants.PUT("/:id", h.Tenant.UpdateTenant)
+			tenants.DELETE("/:id", h.Tenant.DeleteTenant)
+			tenants.GET("/:id/config", h.Tenant.GetTenantConfig)
+			tenants.PUT("/:id/config", h.Tenant.UpdateTenantConfig)
+			tenants.GET("/:id/storage", h.Tenant.GetTenantStorage)
+		}
+
+		// File 文件管理
+		files := v1.Group("/files")
+		{
+			files.POST("/upload", h.File.UploadFile)
+			files.GET("/:id", h.File.GetFile)
+			files.GET("/:id/url", h.File.GetFileURL)
+			files.DELETE("/:id", h.File.DeleteFile)
+			files.GET("/knowledge/:knowledge_id", h.File.ListFilesByKnowledge)
+		}
+
+		// Dataset 数据集管理
+		datasets := v1.Group("/datasets")
+		{
+			datasets.POST("", h.Dataset.CreateDataset)
+			datasets.GET("", h.Dataset.ListDatasets)
+			datasets.GET("/:id", h.Dataset.GetDataset)
+			datasets.PUT("/:id", h.Dataset.UpdateDataset)
+			datasets.DELETE("/:id", h.Dataset.DeleteDataset)
+
+			// QA 对管理
+			datasets.POST("/:dataset_id/qapairs", h.Dataset.CreateQAPair)
+			datasets.POST("/:dataset_id/qapairs/batch", h.Dataset.CreateQAPairsBatch)
+			datasets.GET("/:dataset_id/qapairs", h.Dataset.GetQAPairs)
+			datasets.GET("/qapairs/:id", h.Dataset.GetQAPair)
 		}
 	}
 

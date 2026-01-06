@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/config"
+	"github.com/ashwinyue/next-ai/internal/config"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 )

@@ -1,0 +1,119 @@
+services:
+  frontend:
+    image: next-ai-ui:${NEXT_AI_VERSION:-latest}
+    build:
+      context: ./frontend
+      args:
+        - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50}
+    container_name: Next-AI-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    environment:
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - next-ai-network
+    restart: unless-stopped
+
+  app:
+    image: next-ai-app:${NEXT_AI_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: Next-AI-app
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - data-files:/data/files
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      - GIN_MODE=${GIN_MODE:-release}
+      - DB_DRIVER=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-nextai}
+      - DB_PASSWORD=${DB_PASSWORD:-nextai123}
+      - DB_NAME=${DB_NAME:-nextai}
+      - TZ=Asia/Shanghai
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - ELASTICSEARCH_ADDR=${ELASTICSEARCH_ADDR:-elasticsearch:9200}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      - DASHSCOPE_ACCESS_KEY=${DASHSCOPE_ACCESS_KEY:-}
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - next-ai-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  postgres:
+    image: paradedb/paradedb:v0.18.9-pg17
+    container_name: Next-AI-postgres
+    environment:
+      - POSTGRES_USER=${DB_USER:-nextai}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-nextai123}
+      - POSTGRES_DB=${DB_NAME:-nextai}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - next-ai-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nextai}"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 1m
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: Next-AI-redis
+    command: redis-server --appendonly yes
+    restart: always
+    networks:
+      - next-ai-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.3
+    container_name: Next-AI-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    networks:
+      - next-ai-network
+    restart: unless-stopped
+    profiles:
+      - elasticsearch
+
+networks:
+  next-ai-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  data-files:
+  elasticsearch-data:

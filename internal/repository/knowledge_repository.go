@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/ashwinyue/next-rag/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/model"
 	"gorm.io/gorm"
 )
 
@@ -101,4 +101,48 @@ func (r *KnowledgeRepository) GetChunksByDocumentID(docID string) ([]*model.Docu
 	var chunks []*model.DocumentChunk
 	err := r.db.Where("document_id = ?", docID).Order("chunk_index ASC").Find(&chunks).Error
 	return chunks, err
+}
+
+// GetChunkByID 获取单个分块
+func (r *KnowledgeRepository) GetChunkByID(chunkID string) (*model.DocumentChunk, error) {
+	var chunk model.DocumentChunk
+	err := r.db.Where("id = ?", chunkID).First(&chunk).Error
+	if err != nil {
+		return nil, err
+	}
+	return &chunk, nil
+}
+
+// ListChunksByKnowledgeBaseID 获取知识库的所有分块（支持分页）
+func (r *KnowledgeRepository) ListChunksByKnowledgeBaseID(kbID string, offset, limit int) ([]*model.DocumentChunk, int64, error) {
+	var chunks []*model.DocumentChunk
+	var total int64
+
+	query := r.db.Model(&model.DocumentChunk{}).Where("knowledge_base_id = ?", kbID)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := query.Order("chunk_index ASC").Offset(offset).Limit(limit).Find(&chunks).Error
+	return chunks, total, err
+}
+
+// UpdateChunk 更新分块
+func (r *KnowledgeRepository) UpdateChunk(chunk *model.DocumentChunk) error {
+	return r.db.Save(chunk).Error
+}
+
+// DeleteChunk 删除单个分块
+func (r *KnowledgeRepository) DeleteChunk(chunkID string) error {
+	return r.db.Delete(&model.DocumentChunk{}, "id = ?", chunkID).Error
+}
+
+// DeleteChunksByDocumentID 删除文档的所有分块
+func (r *KnowledgeRepository) DeleteChunksByDocumentID(docID string) error {
+	return r.db.Delete(&model.DocumentChunk{}, "document_id = ?", docID).Error
+}
+
+// DeleteChunksByKnowledgeBaseID 删除知识库的所有分块
+func (r *KnowledgeRepository) DeleteChunksByKnowledgeBaseID(kbID string) error {
+	return r.db.Delete(&model.DocumentChunk{}, "knowledge_base_id = ?", kbID).Error
 }

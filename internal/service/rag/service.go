@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/query"
-	"github.com/ashwinyue/next-rag/next-ai/internal/service/types"
+	"github.com/ashwinyue/next-ai/internal/service/query"
+	"github.com/ashwinyue/next-ai/internal/service/types"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/schema"
