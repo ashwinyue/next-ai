@@ -36,17 +36,17 @@ func (h *MCPServiceHandler) CreateMCPService(c *gin.Context) {
 
 	var req CreateMCPServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	svc, err := h.svc.MCP.CreateMCPService(ctx, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, svc)
+	Success(c, svc)
 }
 
 // ListMCPServices 列出 MCP 服务
@@ -62,11 +62,11 @@ func (h *MCPServiceHandler) ListMCPServices(c *gin.Context) {
 
 	services, err := h.svc.MCP.ListMCPServices(ctx)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, services)
+	Success(c, services)
 }
 
 // GetMCPService 获取 MCP 服务详情
@@ -83,17 +83,17 @@ func (h *MCPServiceHandler) GetMCPService(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	svc, err := h.svc.MCP.GetMCPService(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, svc)
+	Success(c, svc)
 }
 
 // UpdateMCPServiceRequest 更新 MCP 服务请求
@@ -114,23 +114,23 @@ func (h *MCPServiceHandler) UpdateMCPService(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	var req UpdateMCPServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	svc, err := h.svc.MCP.UpdateMCPService(ctx, id, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, svc)
+	Success(c, svc)
 }
 
 // DeleteMCPService 删除 MCP 服务
@@ -147,16 +147,16 @@ func (h *MCPServiceHandler) DeleteMCPService(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	if err := h.svc.MCP.DeleteMCPService(ctx, id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "MCP 服务已删除"})
+	Success(c, gin.H{"message": "MCP 服务已删除"})
 }
 
 // TestMCPService 测试 MCP 服务连接
@@ -173,17 +173,17 @@ func (h *MCPServiceHandler) TestMCPService(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	result, err := h.svc.MCP.TestMCPService(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // GetMCPServiceTools 获取 MCP 服务工具列表
@@ -200,17 +200,17 @@ func (h *MCPServiceHandler) GetMCPServiceTools(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	tools, err := h.svc.MCP.GetMCPServiceTools(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tools)
+	Success(c, tools)
 }
 
 // GetMCPServiceResources 获取 MCP 服务资源列表
@@ -227,15 +227,15 @@ func (h *MCPServiceHandler) GetMCPServiceResources(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	resources, err := h.svc.MCP.GetMCPServiceResources(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, resources)
+	Success(c, resources)
 }

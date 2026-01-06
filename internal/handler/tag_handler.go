@@ -49,7 +49,7 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 
 	var req CreateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "请求参数不合法: " + err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
 		return
 	}
 
@@ -59,11 +59,11 @@ func (h *TagHandler) CreateTag(c *gin.Context) {
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tag)
+	Success(c, tag)
 }
 
 // GetTag 获取标签
@@ -82,11 +82,11 @@ func (h *TagHandler) GetTag(c *gin.Context) {
 
 	tag, err := h.svc.GetTag(c.Request.Context(), tagID)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tag)
+	Success(c, tag)
 }
 
 // ListTags 列出标签
@@ -111,11 +111,11 @@ func (h *TagHandler) ListTags(c *gin.Context) {
 
 	resp, err := h.svc.ListTags(c.Request.Context(), kbID, page, pageSize, keyword)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, resp)
+	Success(c, resp)
 }
 
 // GetAllTags 获取知识库的所有标签（不分页）
@@ -132,11 +132,11 @@ func (h *TagHandler) GetAllTags(c *gin.Context) {
 
 	tags, err := h.svc.GetTagsByKnowledgeBaseID(c.Request.Context(), kbID)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"tags": tags})
+	Success(c, gin.H{"tags": tags})
 }
 
 // UpdateTag 更新标签
@@ -157,7 +157,7 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 
 	var req UpdateTagRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "请求参数不合法: " + err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
 		return
 	}
 
@@ -167,11 +167,11 @@ func (h *TagHandler) UpdateTag(c *gin.Context) {
 		SortOrder: req.SortOrder,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tag)
+	Success(c, tag)
 }
 
 // DeleteTag 删除标签
@@ -189,7 +189,7 @@ func (h *TagHandler) DeleteTag(c *gin.Context) {
 	tagID := c.Param("tag_id")
 
 	if err := h.svc.DeleteTag(c.Request.Context(), tagID); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 

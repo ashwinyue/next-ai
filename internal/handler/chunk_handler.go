@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"strconv"
 
 	chunksvc "github.com/ashwinyue/next-ai/internal/service/chunk"
@@ -23,27 +22,17 @@ func NewChunkHandler(svc *chunksvc.Service) *ChunkHandler {
 func (h *ChunkHandler) GetChunkByID(c *gin.Context) {
 	chunkID := c.Param("id")
 	if chunkID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Chunk ID is required",
-		})
+		BadRequest(c, "Chunk ID is required")
 		return
 	}
 
 	chunk, err := h.svc.GetChunkByID(c.Request.Context(), chunkID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    -1,
-			"message": "Chunk not found",
-		})
+		BadRequest(c, "Chunk not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    chunk,
-	})
+	Success(c, chunk)
 }
 
 // ListChunksByKnowledgeBaseID 获取知识库的所有分块
@@ -51,10 +40,7 @@ func (h *ChunkHandler) GetChunkByID(c *gin.Context) {
 func (h *ChunkHandler) ListChunksByKnowledgeBaseID(c *gin.Context) {
 	kbID := c.Param("kb_id")
 	if kbID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Knowledge base ID is required",
-		})
+		BadRequest(c, "Knowledge base ID is required")
 		return
 	}
 
@@ -71,21 +57,11 @@ func (h *ChunkHandler) ListChunksByKnowledgeBaseID(c *gin.Context) {
 
 	chunks, total, err := h.svc.ListChunksByKnowledgeBaseID(c.Request.Context(), kbID, page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":      0,
-		"message":   "success",
-		"data":      chunks,
-		"total":     total,
-		"page":      page,
-		"page_size": pageSize,
-	})
+	SuccessWithPagination(c, chunks, total, page, pageSize)
 }
 
 // UpdateChunk 更新分块
@@ -93,43 +69,27 @@ func (h *ChunkHandler) ListChunksByKnowledgeBaseID(c *gin.Context) {
 func (h *ChunkHandler) UpdateChunk(c *gin.Context) {
 	chunkID := c.Param("id")
 	if chunkID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Chunk ID is required",
-		})
+		BadRequest(c, "Chunk ID is required")
 		return
 	}
 
 	var req chunksvc.UpdateChunkRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Invalid parameters",
-		})
+		BadRequest(c, "Invalid parameters")
 		return
 	}
 
 	updatedChunk, err := h.svc.UpdateChunk(c.Request.Context(), chunkID, &req)
 	if err != nil {
 		if err == chunksvc.ErrChunkNotFound {
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    -1,
-				"message": "Chunk not found",
-			})
+			BadRequest(c, "Chunk not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Chunk updated successfully",
-		"data":    updatedChunk,
-	})
+	Success(c, updatedChunk)
 }
 
 // DeleteChunk 删除单个分块
@@ -137,32 +97,20 @@ func (h *ChunkHandler) UpdateChunk(c *gin.Context) {
 func (h *ChunkHandler) DeleteChunk(c *gin.Context) {
 	chunkID := c.Param("id")
 	if chunkID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Chunk ID is required",
-		})
+		BadRequest(c, "Chunk ID is required")
 		return
 	}
 
 	if err := h.svc.DeleteChunk(c.Request.Context(), chunkID); err != nil {
 		if err == chunksvc.ErrChunkNotFound {
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    -1,
-				"message": "Chunk not found",
-			})
+			BadRequest(c, "Chunk not found")
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Chunk deleted successfully",
-	})
+	Success(c, nil)
 }
 
 // DeleteChunksByDocumentID 删除文档的所有分块
@@ -170,25 +118,16 @@ func (h *ChunkHandler) DeleteChunk(c *gin.Context) {
 func (h *ChunkHandler) DeleteChunksByDocumentID(c *gin.Context) {
 	docID := c.Param("doc_id")
 	if docID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Document ID is required",
-		})
+		BadRequest(c, "Document ID is required")
 		return
 	}
 
 	if err := h.svc.DeleteChunksByDocumentID(c.Request.Context(), docID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Chunks deleted successfully",
-	})
+	Success(c, nil)
 }
 
 // DeleteChunksByKnowledgeBaseID 删除知识库的所有分块
@@ -196,23 +135,14 @@ func (h *ChunkHandler) DeleteChunksByDocumentID(c *gin.Context) {
 func (h *ChunkHandler) DeleteChunksByKnowledgeBaseID(c *gin.Context) {
 	kbID := c.Param("kb_id")
 	if kbID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Knowledge base ID is required",
-		})
+		BadRequest(c, "Knowledge base ID is required")
 		return
 	}
 
 	if err := h.svc.DeleteChunksByKnowledgeBaseID(c.Request.Context(), kbID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "All chunks deleted successfully",
-	})
+	Success(c, nil)
 }

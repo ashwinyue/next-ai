@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/ashwinyue/next-ai/internal/service"
-	"github.com/ashwinyue/next-ai/internal/service/agent"
+	agentService "github.com/ashwinyue/next-ai/internal/service/agent"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,19 +18,19 @@ func NewAgentHandler(svc *service.Services) *AgentHandler {
 
 // CreateAgent 创建Agent
 func (h *AgentHandler) CreateAgent(c *gin.Context) {
-	var req agent.CreateAgentRequest
+	var req agentService.CreateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
 	agent, err := h.svc.Agent.CreateAgent(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	created(c, agent)
+	Created(c, agent)
 }
 
 // GetAgent 获取Agent
@@ -41,65 +39,56 @@ func (h *AgentHandler) GetAgent(c *gin.Context) {
 
 	agent, err := h.svc.Agent.GetAgent(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, agent)
+	Success(c, agent)
 }
 
 // ListAgents 列出Agent
 func (h *AgentHandler) ListAgents(c *gin.Context) {
-	page, size := getPagination(c)
+	page, pageSize := getPagination(c)
 
-	agents, err := h.svc.Agent.ListAgents(c.Request.Context(), &agent.ListAgentsRequest{
+	agents, err := h.svc.Agent.ListAgents(c.Request.Context(), &agentService.ListAgentsRequest{
 		Page: page,
-		Size: size,
+		Size: pageSize,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data": gin.H{
-			"items": agents,
-			"total": int64(len(agents)),
-			"page":  page,
-			"size":  size,
-		},
-	})
+	SuccessWithPagination(c, agents, int64(len(agents)), page, pageSize)
 }
 
 // ListActiveAgents 列出活跃Agent
 func (h *AgentHandler) ListActiveAgents(c *gin.Context) {
 	agents, err := h.svc.Agent.ListActiveAgents(c.Request.Context())
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, agents)
+	Success(c, agents)
 }
 
 // UpdateAgent 更新Agent
 func (h *AgentHandler) UpdateAgent(c *gin.Context) {
 	id := c.Param("id")
-	var req agent.CreateAgentRequest
+	var req agentService.CreateAgentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
 	agent, err := h.svc.Agent.UpdateAgent(c.Request.Context(), id, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, agent)
+	Success(c, agent)
 }
 
 // DeleteAgent 删除Agent
@@ -107,11 +96,11 @@ func (h *AgentHandler) DeleteAgent(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.svc.Agent.DeleteAgent(c.Request.Context(), id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	NoContent(c)
 }
 
 // CopyAgent 复制Agent
@@ -120,16 +109,16 @@ func (h *AgentHandler) CopyAgent(c *gin.Context) {
 
 	copiedAgent, err := h.svc.Agent.CopyAgent(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	created(c, copiedAgent)
+	Created(c, copiedAgent)
 }
 
 // GetPlaceholders 获取占位符定义
 func (h *AgentHandler) GetPlaceholders(c *gin.Context) {
-	success(c, getAllPlaceholders())
+	Success(c, getAllPlaceholders())
 }
 
 // GetAgentConfig 获取Agent配置
@@ -138,44 +127,44 @@ func (h *AgentHandler) GetAgentConfig(c *gin.Context) {
 
 	agent, err := h.svc.Agent.GetAgent(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
 	// 返回 ModelConfig
-	success(c, agent.ModelConfig)
+	Success(c, agent.ModelConfig)
 }
 
 // RunAgent 运行Agent（同步）
 func (h *AgentHandler) RunAgent(c *gin.Context) {
 	id := c.Param("id")
-	var req agent.RunRequest
+	var req agentService.RunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
 	resp, err := h.svc.Agent.Run(c.Request.Context(), id, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, resp)
+	Success(c, resp)
 }
 
 // StreamAgent 运行Agent（流式）
 func (h *AgentHandler) StreamAgent(c *gin.Context) {
 	id := c.Param("id")
-	var req agent.RunRequest
+	var req agentService.RunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
 	eventCh, err := h.svc.Agent.Stream(c.Request.Context(), id, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
@@ -204,22 +193,22 @@ func (h *AgentHandler) StreamAgent(c *gin.Context) {
 // InitBuiltinAgents 初始化内置 Agent
 func (h *AgentHandler) InitBuiltinAgents(c *gin.Context) {
 	if err := h.svc.Agent.InitBuiltinAgents(c.Request.Context()); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "内置 Agent 初始化成功"})
+	Success(c, gin.H{"message": "内置 Agent 初始化成功"})
 }
 
 // ListBuiltinAgents 列出内置 Agent
 func (h *AgentHandler) ListBuiltinAgents(c *gin.Context) {
 	agents, err := h.svc.Agent.ListBuiltinAgents(c.Request.Context())
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, agents)
+	Success(c, agents)
 }
 
 // ========== 占位符定义 ==========
@@ -233,13 +222,13 @@ type Placeholder struct {
 
 // PlaceholderResponse 占位符响应
 type PlaceholderResponse struct {
-	All                 []Placeholder            `json:"all"`
-	SystemPrompt        []Placeholder            `json:"system_prompt"`
-	AgentSystemPrompt   []Placeholder            `json:"agent_system_prompt"`
-	ContextTemplate     []Placeholder            `json:"context_template"`
-	RewriteSystemPrompt []Placeholder            `json:"rewrite_system_prompt"`
-	RewritePrompt       []Placeholder            `json:"rewrite_prompt"`
-	FallbackPrompt      []Placeholder            `json:"fallback_prompt"`
+	All                 []Placeholder `json:"all"`
+	SystemPrompt        []Placeholder `json:"system_prompt"`
+	AgentSystemPrompt   []Placeholder `json:"agent_system_prompt"`
+	ContextTemplate     []Placeholder `json:"context_template"`
+	RewriteSystemPrompt []Placeholder `json:"rewrite_system_prompt"`
+	RewritePrompt       []Placeholder `json:"rewrite_prompt"`
+	FallbackPrompt      []Placeholder `json:"fallback_prompt"`
 }
 
 // getAllPlaceholders 获取所有占位符定义

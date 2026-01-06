@@ -21,12 +21,12 @@ func NewModelHandler(svc *model.Service) *ModelHandler {
 
 // CreateModelRequest 创建模型请求
 type CreateModelRequest struct {
-	Name        string                     `json:"name" binding:"required"`
-	Type        dataModel.ModelType        `json:"type" binding:"required"`
-	Source      dataModel.ModelSource      `json:"source" binding:"required"`
-	Description string                     `json:"description"`
-	Parameters  dataModel.ModelParameters  `json:"parameters" binding:"required"`
-	IsDefault   bool                       `json:"is_default"`
+	Name        string                    `json:"name" binding:"required"`
+	Type        dataModel.ModelType       `json:"type" binding:"required"`
+	Source      dataModel.ModelSource     `json:"source" binding:"required"`
+	Description string                    `json:"description"`
+	Parameters  dataModel.ModelParameters `json:"parameters" binding:"required"`
+	IsDefault   bool                      `json:"is_default"`
 }
 
 // UpdateModelRequest 更新模型请求
@@ -217,7 +217,7 @@ func (h *ModelHandler) DeleteModel(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	NoContent(c)
 }
 
 // ListModelProviders 列出支持的模型提供商

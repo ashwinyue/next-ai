@@ -3,7 +3,6 @@ package handler
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/ashwinyue/next-ai/internal/service/evaluation"
@@ -37,17 +36,17 @@ func (h *EvaluationHandler) CreateEvaluation(c *gin.Context) {
 
 	var req CreateEvaluationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
 	task, err := h.svc.Evaluation.CreateEvaluation(ctx, &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, task)
+	Success(c, task)
 }
 
 // GetEvaluationResult 获取评估结果
@@ -64,17 +63,17 @@ func (h *EvaluationHandler) GetEvaluationResult(c *gin.Context) {
 
 	taskID := c.Query("task_id")
 	if taskID == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "task_id is required"})
+		BadRequest(c, "task_id is required")
 		return
 	}
 
 	result, err := h.svc.Evaluation.GetEvaluationResult(ctx, taskID)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // ListEvaluations 列出评估任务
@@ -97,14 +96,14 @@ func (h *EvaluationHandler) ListEvaluations(c *gin.Context) {
 
 	tasks, total, err := h.svc.Evaluation.ListEvaluationTasks(ctx, kbID, limit, offset)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{
-		"items": tasks,
-		"total": total,
-		"limit": limit,
+	Success(c, gin.H{
+		"items":  tasks,
+		"total":  total,
+		"limit":  limit,
 		"offset": offset,
 	})
 }
@@ -123,16 +122,16 @@ func (h *EvaluationHandler) DeleteEvaluation(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	if err := h.svc.Evaluation.DeleteEvaluationTask(ctx, id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "评估任务已删除"})
+	Success(c, gin.H{"message": "评估任务已删除"})
 }
 
 // CancelEvaluation 取消评估任务
@@ -149,16 +148,16 @@ func (h *EvaluationHandler) CancelEvaluation(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	if err := h.svc.Evaluation.CancelEvaluation(ctx, id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "评估任务已取消"})
+	Success(c, gin.H{"message": "评估任务已取消"})
 }
 
 // queryInt 辅助函数：解析整数参数

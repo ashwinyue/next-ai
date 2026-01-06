@@ -38,20 +38,20 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	knowledgeID := c.PostForm("knowledge_id")
 
 	if tenantID == "" || knowledgeID == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "tenant_id and knowledge_id are required"})
+		BadRequest(c, "tenant_id and knowledge_id are required")
 		return
 	}
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "file is required: " + err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, "$1"+err.Error()))
 		return
 	}
 
 	// 打开文件
 	f, err := fileHeader.Open()
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 	defer f.Close()
@@ -66,11 +66,11 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		KnowledgeID: knowledgeID,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	created(c, storedFile)
+	Created(c, storedFile)
 }
 
 // GetFile 获取文件
@@ -88,7 +88,7 @@ func (h *FileHandler) GetFile(c *gin.Context) {
 
 	storedFile, reader, err := h.fileSvc.GetFile(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 	defer reader.Close()
@@ -101,7 +101,7 @@ func (h *FileHandler) GetFile(c *gin.Context) {
 	// 流式传输文件
 	_, err = io.Copy(c.Writer, reader)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 }
@@ -121,11 +121,11 @@ func (h *FileHandler) GetFileURL(c *gin.Context) {
 
 	url, err := h.fileSvc.GetFileURL(id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"url": url})
+	Success(c, gin.H{"url": url})
 }
 
 // DeleteFile 删除文件
@@ -142,11 +142,11 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.fileSvc.DeleteFile(c.Request.Context(), id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "File deleted successfully"})
+	Success(c, gin.H{"message": "File deleted successfully"})
 }
 
 // ListFilesByKnowledge 列出知识库的文件
@@ -164,9 +164,9 @@ func (h *FileHandler) ListFilesByKnowledge(c *gin.Context) {
 
 	files, err := h.fileSvc.ListByKnowledgeID(c.Request.Context(), knowledgeID)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"files": files, "total": len(files)})
+	Success(c, gin.H{"files": files, "total": len(files)})
 }

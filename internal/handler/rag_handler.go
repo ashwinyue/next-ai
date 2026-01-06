@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"net/http"
-
 	"github.com/ashwinyue/next-ai/internal/service"
 	"github.com/ashwinyue/next-ai/internal/service/rag"
 	"github.com/gin-gonic/gin"
@@ -30,7 +28,7 @@ type RetrieveRequest struct {
 func (h *RAGHandler) Retrieve(c *gin.Context) {
 	var req RetrieveRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		BadRequest(c, err.Error())
 		return
 	}
 
@@ -50,18 +48,18 @@ func (h *RAGHandler) Retrieve(c *gin.Context) {
 		EnableRerank:   req.EnableRerank,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, resp)
+	Success(c, resp)
 }
 
 // RetrieveSimple 简化检索（默认参数）
 func (h *RAGHandler) RetrieveSimple(c *gin.Context) {
 	query := c.Query("query")
 	if query == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "query is required"})
+		BadRequest(c, "query is required")
 		return
 	}
 
@@ -81,9 +79,9 @@ func (h *RAGHandler) RetrieveSimple(c *gin.Context) {
 		EnableRerank:   true,
 	})
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, resp)
+	Success(c, resp)
 }

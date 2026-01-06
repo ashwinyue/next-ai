@@ -37,7 +37,7 @@ func (h *InitializationHandler) CheckOllamaStatus(c *gin.Context) {
 		}
 	}
 
-	success(c, status)
+	Success(c, status)
 }
 
 // UpdateKBConfigRequest 更新知识库配置请求
@@ -58,16 +58,16 @@ func (h *InitializationHandler) UpdateKBConfig(c *gin.Context) {
 
 	var req UpdateKBConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	if err := h.svc.Initialization.UpdateKBConfig(c.Request.Context(), kbID, &req); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "配置更新成功"})
+	Success(c, gin.H{"message": "配置更新成功"})
 }
 
 // GetKBConfig 获取知识库配置
@@ -84,11 +84,11 @@ func (h *InitializationHandler) GetKBConfig(c *gin.Context) {
 
 	config, err := h.svc.Initialization.GetKBConfig(c.Request.Context(), kbID)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, config)
+	Success(c, config)
 }
 
 // InitializeByKBRequest 初始化知识库请求
@@ -109,16 +109,16 @@ func (h *InitializationHandler) InitializeByKB(c *gin.Context) {
 
 	var req InitializeByKBRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	if err := h.svc.Initialization.InitializeByKB(c.Request.Context(), kbID, &req); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "知识库初始化成功"})
+	Success(c, gin.H{"message": "知识库初始化成功"})
 }
 
 // GetSystemInfo 获取系统信息
@@ -134,11 +134,11 @@ func (h *InitializationHandler) GetSystemInfo(c *gin.Context) {
 
 	info, err := h.svc.Initialization.GetSystemInfo(ctx)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, info)
+	Success(c, info)
 }
 
 // TestEmbeddingRequest 测试 Embedding 请求
@@ -159,7 +159,7 @@ type TestEmbeddingResponse = initialization.TestEmbeddingResponse
 func (h *InitializationHandler) TestEmbedding(c *gin.Context) {
 	var req TestEmbeddingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *InitializationHandler) TestEmbedding(c *gin.Context) {
 		}
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // ListOllamaModels 列出已安装的 Ollama 模型
@@ -187,11 +187,11 @@ func (h *InitializationHandler) ListOllamaModels(c *gin.Context) {
 
 	models, err := h.svc.Initialization.ListOllamaModels(ctx)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"models": models})
+	Success(c, gin.H{"models": models})
 }
 
 // CheckOllamaModelsRequest 检查 Ollama 模型请求
@@ -209,17 +209,17 @@ type CheckOllamaModelsRequest = initialization.CheckOllamaModelsRequest
 func (h *InitializationHandler) CheckOllamaModels(c *gin.Context) {
 	var req CheckOllamaModelsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	result, err := h.svc.Initialization.CheckOllamaModels(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"models": result})
+	Success(c, gin.H{"models": result})
 }
 
 // CheckRemoteModelRequest 检查远程模型请求
@@ -240,17 +240,17 @@ type CheckRemoteModelResponse = initialization.CheckRemoteModelResponse
 func (h *InitializationHandler) CheckRemoteModel(c *gin.Context) {
 	var req CheckRemoteModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	result, err := h.svc.Initialization.CheckRemoteModel(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // CheckRerankModelRequest 检查 Rerank 模型请求
@@ -271,15 +271,15 @@ type CheckRerankModelResponse = initialization.CheckRerankModelResponse
 func (h *InitializationHandler) CheckRerankModel(c *gin.Context) {
 	var req CheckRerankModelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	result, err := h.svc.Initialization.CheckRerankModel(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }

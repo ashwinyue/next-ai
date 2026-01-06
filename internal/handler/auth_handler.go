@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/ashwinyue/next-ai/internal/service"
@@ -23,90 +22,63 @@ func NewAuthHandler(svc *service.Services) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req auth.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Invalid parameters",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "Invalid parameters: "+err.Error())
 		return
 	}
 
 	resp, err := h.svc.Auth.Register(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, resp)
+	Created(c, resp)
 }
 
 // Login 用户登录
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req auth.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Invalid parameters",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "Invalid parameters: "+err.Error())
 		return
 	}
 
 	resp, err := h.svc.Auth.Login(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": "Login failed",
-		})
+		Error(c, err)
 		return
 	}
 
 	if !resp.Success {
-		c.JSON(http.StatusUnauthorized, resp)
+		Success(c, resp)
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	Success(c, resp)
 }
 
 // ValidateToken 验证令牌
 func (h *AuthHandler) ValidateToken(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Missing Authorization header",
-		})
+		BadRequest(c, "Missing Authorization header")
 		return
 	}
 
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Invalid Authorization header format",
-		})
+		BadRequest(c, "Invalid Authorization header format")
 		return
 	}
 
 	token := tokenParts[1]
 	user, err := h.svc.Auth.ValidateToken(c.Request.Context(), token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Invalid or expired token",
-		})
+		BadRequest(c, "Invalid or expired token")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Token is valid",
-		"data":    user.ToUserInfo(),
-	})
+	Success(c, user.ToUserInfo())
 }
 
 // RefreshToken 刷新令牌
@@ -116,25 +88,17 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Invalid parameters",
-		})
+		BadRequest(c, "Invalid parameters")
 		return
 	}
 
 	accessToken, newRefreshToken, err := h.svc.Auth.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Invalid refresh token",
-		})
+		BadRequest(c, "Invalid refresh token")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":          0,
-		"message":        "Token refreshed successfully",
+	Success(c, gin.H{
 		"access_token":  accessToken,
 		"refresh_token": newRefreshToken,
 	})
@@ -144,85 +108,54 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Missing Authorization header",
-		})
+		BadRequest(c, "Missing Authorization header")
 		return
 	}
 
 	tokenParts := strings.Split(authHeader, " ")
 	if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Invalid Authorization header format",
-		})
+		BadRequest(c, "Invalid Authorization header format")
 		return
 	}
 
 	token := tokenParts[1]
 	if err := h.svc.Auth.RevokeToken(c.Request.Context(), token); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    -1,
-			"message": "Logout failed",
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Logout successful",
-	})
+	Success(c, nil)
 }
 
 // GetCurrentUser 获取当前用户
 func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	user, err := h.svc.Auth.GetCurrentUser(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Failed to get user information",
-		})
+		Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    user.ToUserInfo(),
-	})
+	Success(c, user.ToUserInfo())
 }
 
 // ChangePassword 修改密码
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	var req auth.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": "Invalid parameters",
-		})
+		BadRequest(c, "Invalid parameters")
 		return
 	}
 
 	user, err := h.svc.Auth.GetCurrentUser(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    -1,
-			"message": "Unauthorized",
-		})
+		Error(c, err)
 		return
 	}
 
 	if err := h.svc.Auth.ChangePassword(c.Request.Context(), user.ID, req.OldPassword, req.NewPassword); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    -1,
-			"message": err.Error(),
-		})
+		BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "Password changed successfully",
-	})
+	Success(c, nil)
 }

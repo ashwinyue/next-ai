@@ -34,17 +34,17 @@ func (h *TenantHandler) CreateTenant(c *gin.Context) {
 
 	var tenant model.Tenant
 	if err := c.ShouldBindJSON(&tenant); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	result, err := h.svc.Tenant.CreateTenant(ctx, &tenant)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // GetTenant 获取租户详情
@@ -61,17 +61,17 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	tenant, err := h.svc.Tenant.GetTenant(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tenant)
+	Success(c, tenant)
 }
 
 // ListTenants 列出租户
@@ -87,11 +87,11 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 
 	tenants, err := h.svc.Tenant.ListTenants(ctx)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, tenants)
+	Success(c, tenants)
 }
 
 // UpdateTenant 更新租户
@@ -109,24 +109,24 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	var tenant model.Tenant
 	if err := c.ShouldBindJSON(&tenant); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	tenant.ID = id
 	result, err := h.svc.Tenant.UpdateTenant(ctx, &tenant)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, result)
+	Success(c, result)
 }
 
 // DeleteTenant 删除租户
@@ -143,16 +143,16 @@ func (h *TenantHandler) DeleteTenant(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	if err := h.svc.Tenant.DeleteTenant(ctx, id); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "租户已删除"})
+	Success(c, gin.H{"message": "租户已删除"})
 }
 
 // GetTenantConfig 获取租户配置
@@ -170,23 +170,23 @@ func (h *TenantHandler) GetTenantConfig(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	configType := c.Query("type")
 	if configType == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "type is required"})
+		BadRequest(c, "type is required")
 		return
 	}
 
 	config, err := h.svc.Tenant.GetTenantConfig(ctx, id, configType)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, config)
+	Success(c, config)
 }
 
 // UpdateTenantConfig 更新租户配置
@@ -205,28 +205,28 @@ func (h *TenantHandler) UpdateTenantConfig(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	configType := c.Query("type")
 	if configType == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "type is required"})
+		BadRequest(c, "type is required")
 		return
 	}
 
 	var config interface{}
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: err.Error()})
+		c.JSON(http.StatusBadRequest, BadRequest(c, err.Error()))
 		return
 	}
 
 	if err := h.svc.Tenant.UpdateTenantConfig(ctx, id, configType, config); err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
-	success(c, gin.H{"message": "配置已更新"})
+	Success(c, gin.H{"message": "配置已更新"})
 }
 
 // GetTenantStorage 获取租户存储信息
@@ -243,13 +243,13 @@ func (h *TenantHandler) GetTenantStorage(c *gin.Context) {
 
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, Response{Code: -1, Message: "id is required"})
+		BadRequest(c, "id is required")
 		return
 	}
 
 	tenant, err := h.svc.Tenant.GetTenant(ctx, id)
 	if err != nil {
-		errorResponse(c, err)
+		Error(c, err)
 		return
 	}
 
@@ -259,11 +259,11 @@ func (h *TenantHandler) GetTenantStorage(c *gin.Context) {
 		usedPercent = float64(tenant.StorageUsed) / float64(tenant.StorageQuota) * 100
 	}
 
-	success(c, gin.H{
-		"storage_used":    tenant.StorageUsed,
-		"storage_quota":   tenant.StorageQuota,
-		"used_percent":    usedPercent,
-		"available":       tenant.StorageQuota - tenant.StorageUsed,
+	Success(c, gin.H{
+		"storage_used":  tenant.StorageUsed,
+		"storage_quota": tenant.StorageQuota,
+		"used_percent":  usedPercent,
+		"available":     tenant.StorageQuota - tenant.StorageUsed,
 	})
 }
 

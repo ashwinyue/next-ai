@@ -39,17 +39,17 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			auth.POST("/change-password", h.Auth.ChangePassword)
 		}
 
-		// Chat 聊天
-		chats := v1.Group("/chats")
+		// Sessions 聊天会话（WeKnora API 兼容）
+		sessions := v1.Group("/sessions")
 		{
-			chats.POST("", h.Chat.CreateSession)
-			chats.GET("", h.Chat.ListSessions)
-			chats.GET("/:id", h.Chat.GetSession)
-			chats.PUT("/:id", h.Chat.UpdateSession)
-			chats.DELETE("/:id", h.Chat.DeleteSession)
-			chats.POST("/:id/messages", h.Chat.SendMessage)
-			chats.GET("/:id/messages", h.Chat.GetMessages)
-			chats.POST("/:id/title", h.Chat.GenerateTitle)
+			sessions.POST("", h.Chat.CreateSession)
+			sessions.GET("", h.Chat.ListSessions)
+			sessions.GET("/:id", h.Chat.GetSession)
+			sessions.PUT("/:id", h.Chat.UpdateSession)
+			sessions.DELETE("/:id", h.Chat.DeleteSession)
+			sessions.POST("/:id/messages", h.Chat.SendMessage)
+			sessions.GET("/:id/messages", h.Chat.GetMessages)
+			sessions.POST("/:id/title", h.Chat.GenerateTitle)
 		}
 
 		// Messages 消息管理（独立接口）
@@ -86,12 +86,12 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			kb.GET("/:id", h.Knowledge.GetKnowledgeBase)
 			kb.PUT("/:id", h.Knowledge.UpdateKnowledgeBase)
 			kb.DELETE("/:id", h.Knowledge.DeleteKnowledgeBase)
-			kb.POST("/:kb_id/documents", h.Knowledge.UploadDocument)
-			kb.GET("/:kb_id/documents", h.Knowledge.ListDocuments)
+			kb.POST("/:id/documents", h.Knowledge.UploadDocument)
+			kb.GET("/:id/documents", h.Knowledge.ListDocuments)
 
 			// 分块管理
-			kb.GET("/:kb_id/chunks", h.Chunk.ListChunksByKnowledgeBaseID)
-			kb.DELETE("/:kb_id/chunks", h.Chunk.DeleteChunksByKnowledgeBaseID)
+			kb.GET("/:id/chunks", h.Chunk.ListChunksByKnowledgeBaseID)
+			kb.DELETE("/:id/chunks", h.Chunk.DeleteChunksByKnowledgeBaseID)
 
 			// 标签管理
 			kb.POST("/:id/tags", h.Tag.CreateTag)
