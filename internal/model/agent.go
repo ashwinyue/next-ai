@@ -17,9 +17,33 @@ const (
 
 // 内置 Agent ID 常量
 const (
-	BuiltinQuickAnswerID     = "builtin-quick-answer"
-	BuiltinSmartReasoningID  = "builtin-smart-reasoning"
+	BuiltinQuickAnswerID         = "builtin-quick-answer"
+	BuiltinSmartReasoningID      = "builtin-smart-reasoning"
+	BuiltinDeepResearcherID      = "builtin-deep-researcher"
+	BuiltinDataAnalystID         = "builtin-data-analyst"
+	BuiltinKnowledgeGraphExpertID = "builtin-knowledge-graph-expert"
+	BuiltinDocumentAssistantID    = "builtin-document-assistant"
 )
+
+// 内置 Agent ID 列表
+var BuiltinAgentIDs = []string{
+	BuiltinQuickAnswerID,
+	BuiltinSmartReasoningID,
+	BuiltinDeepResearcherID,
+	BuiltinDataAnalystID,
+	BuiltinKnowledgeGraphExpertID,
+	BuiltinDocumentAssistantID,
+}
+
+// IsBuiltinAgentID 检查是否是内置 Agent ID
+func IsBuiltinAgentID(id string) bool {
+	for _, builtinID := range BuiltinAgentIDs {
+		if id == builtinID {
+			return true
+		}
+	}
+	return false
+}
 
 // ModelConfig represents AI model configuration
 type ModelConfig struct {

@@ -201,6 +201,27 @@ func (h *AgentHandler) StreamAgent(c *gin.Context) {
 	}
 }
 
+// InitBuiltinAgents 初始化内置 Agent
+func (h *AgentHandler) InitBuiltinAgents(c *gin.Context) {
+	if err := h.svc.Agent.InitBuiltinAgents(c.Request.Context()); err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, gin.H{"message": "内置 Agent 初始化成功"})
+}
+
+// ListBuiltinAgents 列出内置 Agent
+func (h *AgentHandler) ListBuiltinAgents(c *gin.Context) {
+	agents, err := h.svc.Agent.ListBuiltinAgents(c.Request.Context())
+	if err != nil {
+		errorResponse(c, err)
+		return
+	}
+
+	success(c, agents)
+}
+
 // ========== 占位符定义 ==========
 
 // Placeholder 占位符定义

@@ -66,6 +66,8 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			agents.POST("", h.Agent.CreateAgent)
 			agents.GET("", h.Agent.ListAgents)
 			agents.GET("/active", h.Agent.ListActiveAgents)
+			agents.GET("/builtin", h.Agent.ListBuiltinAgents)
+			agents.POST("/builtin/init", h.Agent.InitBuiltinAgents)
 			agents.GET("/placeholders", h.Agent.GetPlaceholders)
 			agents.GET("/:id", h.Agent.GetAgent)
 			agents.GET("/:id/config", h.Agent.GetAgentConfig)

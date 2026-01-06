@@ -191,6 +191,20 @@ func (s *Service) UpdateAgent(ctx context.Context, id string, req *CreateAgentRe
 
 // DeleteAgent 删除 Agent
 func (s *Service) DeleteAgent(ctx context.Context, id string) error {
+	// 不允许删除内置 Agent
+	if agentmodel.IsBuiltinAgentID(id) {
+		return fmt.Errorf("builtin agent cannot be deleted")
+	}
+
+	// 检查 Agent 是否存在
+	agentModel, err := s.repo.Agent.GetByID(id)
+	if err != nil {
+		return fmt.Errorf("agent not found: %w", err)
+	}
+	if agentModel.IsBuiltin {
+		return fmt.Errorf("builtin agent cannot be deleted")
+	}
+
 	if err := s.repo.Agent.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete agent: %w", err)
 	}
