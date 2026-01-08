@@ -73,8 +73,10 @@ func (s *Service) ListDatasets(ctx context.Context, tenantID string, page, size 
 		return nil, 0, fmt.Errorf("failed to list datasets: %w", err)
 	}
 
-	// TODO: 实现总数查询
-	total := int64(len(datasets))
+	total, err := s.repo.Dataset.Count(tenantID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count datasets: %w", err)
+	}
 
 	return datasets, total, nil
 }

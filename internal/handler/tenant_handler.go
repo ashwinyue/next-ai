@@ -3,9 +3,11 @@ package handler
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/ashwinyue/next-ai/internal/model"
 	"github.com/ashwinyue/next-ai/internal/service"
+	"github.com/ashwinyue/next-ai/internal/service/tenant"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,19 +27,19 @@ func NewTenantHandler(svc *service.Services) *TenantHandler {
 // @Tags         租户管理
 // @Accept       json
 // @Produce      json
-// @Param        request  body      model.Tenant  true  "租户信息"
+// @Param        request  body      tenant.CreateTenantRequest  true  "租户信息"
 // @Success      200      {object}  Response
 // @Router       /api/v1/tenants [post]
 func (h *TenantHandler) CreateTenant(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var tenant model.Tenant
-	if err := c.ShouldBindJSON(&tenant); err != nil {
+	var req tenant.CreateTenantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		BadRequest(c, err.Error())
 		return
 	}
 
-	result, err := h.svc.Tenant.CreateTenant(ctx, &tenant)
+	result, err := h.svc.Tenant.CreateTenant(ctx, &req)
 	if err != nil {
 		Error(c, err)
 		return
@@ -64,13 +66,13 @@ func (h *TenantHandler) GetTenant(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.svc.Tenant.GetTenant(ctx, id)
+	tenantModel, err := h.svc.Tenant.GetTenant(ctx, id)
 	if err != nil {
 		Error(c, err)
 		return
 	}
 
-	Success(c, tenant)
+	Success(c, tenantModel)
 }
 
 // ListTenants 列出租户
@@ -99,8 +101,8 @@ func (h *TenantHandler) ListTenants(c *gin.Context) {
 // @Tags         租户管理
 // @Accept       json
 // @Produce      json
-// @Param        id       path      string       true  "租户 ID"
-// @Param        request  body      model.Tenant  true  "租户信息"
+// @Param        id       path      string  true  "租户 ID"
+// @Param        request  body      tenant.UpdateTenantRequest  true  "租户信息"
 // @Success      200      {object}  Response
 // @Router       /api/v1/tenants/{id} [put]
 func (h *TenantHandler) UpdateTenant(c *gin.Context) {
@@ -112,14 +114,13 @@ func (h *TenantHandler) UpdateTenant(c *gin.Context) {
 		return
 	}
 
-	var tenant model.Tenant
-	if err := c.ShouldBindJSON(&tenant); err != nil {
+	var req tenant.UpdateTenantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		BadRequest(c, err.Error())
 		return
 	}
 
-	tenant.ID = id
-	result, err := h.svc.Tenant.UpdateTenant(ctx, &tenant)
+	result, err := h.svc.Tenant.UpdateTenant(ctx, id, &req)
 	if err != nil {
 		Error(c, err)
 		return
@@ -196,7 +197,7 @@ func (h *TenantHandler) GetTenantConfig(c *gin.Context) {
 // @Produce      json
 // @Param        id     path      string  true  "租户 ID"
 // @Param        type   query     string  true  "配置类型: agent, context, web_search, conversation"
-// @Param        request body      object  true  "配置内容"
+// @Param        request body      tenant.UpdateTenantConfigRequest  true  "配置内容"
 // @Success      200      {object}  Response
 // @Router       /api/v1/tenants/{id}/config [put]
 func (h *TenantHandler) UpdateTenantConfig(c *gin.Context) {
@@ -220,7 +221,12 @@ func (h *TenantHandler) UpdateTenantConfig(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.Tenant.UpdateTenantConfig(ctx, id, configType, config); err != nil {
+	req := &tenant.UpdateTenantConfigRequest{
+		ConfigType: configType,
+		Config:     config,
+	}
+
+	if err := h.svc.Tenant.UpdateTenantConfig(ctx, id, req); err != nil {
 		Error(c, err)
 		return
 	}
@@ -246,7 +252,7 @@ func (h *TenantHandler) GetTenantStorage(c *gin.Context) {
 		return
 	}
 
-	tenant, err := h.svc.Tenant.GetTenant(ctx, id)
+	used, quota, err := h.svc.Tenant.GetStorageStats(ctx, id)
 	if err != nil {
 		Error(c, err)
 		return
@@ -254,15 +260,15 @@ func (h *TenantHandler) GetTenantStorage(c *gin.Context) {
 
 	// 计算存储使用百分比
 	usedPercent := 0.0
-	if tenant.StorageQuota > 0 {
-		usedPercent = float64(tenant.StorageUsed) / float64(tenant.StorageQuota) * 100
+	if quota > 0 {
+		usedPercent = float64(used) / float64(quota) * 100
 	}
 
 	Success(c, gin.H{
-		"storage_used":  tenant.StorageUsed,
-		"storage_quota": tenant.StorageQuota,
+		"storage_used":  used,
+		"storage_quota": quota,
 		"used_percent":  usedPercent,
-		"available":     tenant.StorageQuota - tenant.StorageUsed,
+		"available":     quota - used,
 	})
 }
 
@@ -276,4 +282,103 @@ func parseInt(s string, defaultVal int) int {
 		return defaultVal
 	}
 	return val
+}
+
+// ========== 租户 KV 配置（WeKnora API 兼容）==========
+
+// GetTenantKV 获取租户 KV 配置
+// GET /api/v1/tenants/kv/:key
+// 支持: agent, context, web_search, conversation
+func (h *TenantHandler) GetTenantKV(c *gin.Context) {
+	key := c.Param("key")
+
+	// 获取当前租户 ID（从上下文）
+	tenantID := "default" // 简化版：使用默认租户
+
+	config, err := h.svc.Tenant.GetTenantConfig(c.Request.Context(), tenantID, key)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, gin.H{
+		"success": true,
+		"data":    config,
+	})
+}
+
+// UpdateTenantKV 更新租户 KV 配置
+// PUT /api/v1/tenants/kv/:key
+func (h *TenantHandler) UpdateTenantKV(c *gin.Context) {
+	key := c.Param("key")
+
+	// 获取当前租户 ID（从上下文）
+	tenantID := "default" // 简化版：使用默认租户
+
+	var config interface{}
+	if err := c.ShouldBindJSON(&config); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	req := &tenant.UpdateTenantConfigRequest{
+		ConfigType: key,
+		Config:     config,
+	}
+
+	if err := h.svc.Tenant.UpdateTenantConfig(c.Request.Context(), tenantID, req); err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, gin.H{
+		"success": true,
+		"message": "Configuration updated successfully",
+	})
+}
+
+// ListAllTenants 列出所有租户（WeKnora API 兼容）
+// GET /api/v1/tenants/all
+func (h *TenantHandler) ListAllTenants(c *gin.Context) {
+	tenants, err := h.svc.Tenant.ListTenants(c.Request.Context())
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, gin.H{
+		"success": true,
+		"data":    tenants,
+	})
+}
+
+// SearchTenants 搜索租户（WeKnora API 兼容）
+// GET /api/v1/tenants/search?q=keyword
+func (h *TenantHandler) SearchTenants(c *gin.Context) {
+	query := c.Query("q")
+
+	tenants, err := h.svc.Tenant.ListTenants(c.Request.Context())
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	// 简单过滤（生产环境应在数据库层实现）
+	filtered := make([]*model.Tenant, 0)
+	if query != "" {
+		for _, t := range tenants {
+			// 实现简单搜索逻辑：匹配名称或描述
+			if strings.Contains(strings.ToLower(t.Name), strings.ToLower(query)) ||
+				strings.Contains(strings.ToLower(t.Description), strings.ToLower(query)) {
+				filtered = append(filtered, t)
+			}
+		}
+	} else {
+		filtered = tenants
+	}
+
+	Success(c, gin.H{
+		"success": true,
+		"data":    filtered,
+	})
 }

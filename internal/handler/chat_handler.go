@@ -3,8 +3,8 @@ package handler
 import (
 	"strconv"
 
+	"github.com/ashwinyue/next-ai/internal/middleware"
 	"github.com/ashwinyue/next-ai/internal/service"
-	"github.com/ashwinyue/next-ai/internal/service/agent"
 	"github.com/ashwinyue/next-ai/internal/service/chat"
 	"github.com/ashwinyue/next-ai/internal/service/rag"
 	"github.com/gin-gonic/gin"
@@ -254,63 +254,39 @@ func (h *ChatHandler) KnowledgeChat(c *gin.Context) {
 		return
 	}
 
-	// TODO: 实现知识库聊天逻辑
-	// 这需要调用 RAG 服务进行检索和生成
+	// h.svc.Chat 已经是 *chat.ServiceWithAgent 类型
+	chatSvc := h.svc.Chat
 
-	// 暂时返回基本响应
-	Success(c, gin.H{
-		"answer":       "知识库聊天功能正在开发中",
-		"session_id":   sessionID,
-		"query":        req.Query,
-		"sources":      []interface{}{},
-		"message_id":   "",
-		"stream_event": "",
-	})
-}
+	// 构建请求
+	agentReq := &chat.KnowledgeChatRequest{
+		SessionID:        sessionID,
+		Query:            req.Query,
+		KnowledgeBaseIDs: req.KnowledgeBaseIDs,
+		TenantID:         middleware.GetTenantID(c),
+	}
 
-// AgentChatRequest WeKnora 智能体聊天请求
-type AgentChatRequest struct {
-	Query            string                 `json:"query" binding:"required"`
-	AgentID          string                 `json:"agent_id"`
-	KnowledgeBaseIDs []string               `json:"knowledge_base_ids"`
-	WebSearchEnabled bool                   `json:"web_search_enabled"`
-	Metadata         map[string]interface{} `json:"metadata"`
-}
-
-// AgentChat 智能体聊天（WeKnora API 兼容）
-// POST /api/v1/agent-chat/:session_id
-func (h *ChatHandler) AgentChat(c *gin.Context) {
-	sessionID := c.Param("session_id")
-
-	var req AgentChatRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		BadRequest(c, err.Error())
+	// 调用知识库聊天（流式）
+	eventCh, err := chatSvc.KnowledgeChat(c.Request.Context(), agentReq)
+	if err != nil {
+		Error(c, err)
 		return
 	}
 
-	// 如果指定了 Agent ID，使用 Agent 运行
-	if req.AgentID != "" {
-		runReq := agent.RunRequest{
-			Query:     req.Query,
-			SessionID: sessionID,
-		}
+	// 设置 SSE 流式响应
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
 
-		resp, err := h.svc.Agent.Run(c.Request.Context(), req.AgentID, &runReq)
-		if err != nil {
-			Error(c, err)
-			return
-		}
-
-		Success(c, resp)
-		return
+	// 发送事件
+	for evt := range eventCh {
+		// 格式化为 SSE 格式
+		c.SSEvent("message", evt)
+		c.Writer.Flush()
 	}
 
-	// 暂时返回基本响应
-	Success(c, gin.H{
-		"answer":     "智能体聊天功能正在开发中",
-		"session_id": sessionID,
-		"query":      req.Query,
-	})
+	// 发送结束事件
+	c.SSEvent("end", gin.H{"session_id": sessionID})
+	c.Writer.Flush()
 }
 
 // KnowledgeSearchRequest WeKnora 知识搜索请求
@@ -335,11 +311,10 @@ func (h *ChatHandler) KnowledgeSearch(c *gin.Context) {
 		req.TopK = 5
 	}
 
-	// 创建 RAG 服务（与 RAGHandler 相同的方式）
+	// 创建 RAG 服务
 	ragSvc := rag.NewService(
 		h.svc.ChatModel,
 		h.svc.Retriever,
-		h.svc.Query,
 		h.svc.Rerankers,
 	)
 
@@ -356,4 +331,145 @@ func (h *ChatHandler) KnowledgeSearch(c *gin.Context) {
 	}
 
 	Success(c, result)
+}
+
+// AgentChatRequest WeKnora 智能体聊天请求
+type AgentChatRequest struct {
+	Query            string                 `json:"query" binding:"required"`
+	AgentID          string                 `json:"agent_id"`
+	KnowledgeBaseIDs []string               `json:"knowledge_base_ids"`
+	TenantID         string                 `json:"tenant_id"`
+	Metadata         map[string]interface{} `json:"metadata"`
+}
+
+// AgentChat 智能体聊天（WeKnora API 兼容）
+// POST /api/v1/agent-chat/:session_id
+func (h *ChatHandler) AgentChat(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	var req AgentChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// h.svc.Chat 已经是 *chat.ServiceWithAgent 类型
+	chatSvc := h.svc.Chat
+
+	// 构建请求
+	agentReq := &chat.AgentChatRequest{
+		SessionID:        sessionID,
+		AgentID:          req.AgentID,
+		Query:            req.Query,
+		KnowledgeBaseIDs: req.KnowledgeBaseIDs,
+		TenantID:         req.TenantID,
+	}
+
+	// 调用 Agent 聊天（流式）
+	eventCh, err := chatSvc.AgentChat(c.Request.Context(), agentReq)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	// 设置 SSE 流式响应
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	// 发送事件
+	for evt := range eventCh {
+		// 格式化为 SSE 格式
+		c.SSEvent("message", evt)
+		c.Writer.Flush()
+	}
+
+	// 发送结束事件
+	c.SSEvent("end", gin.H{"session_id": sessionID})
+	c.Writer.Flush()
+}
+
+// ========== 会话流控制（WeKnora API 兼容）==========
+
+// StopSessionRequest 停止会话请求
+type StopSessionRequest struct {
+	MessageID string `json:"message_id" binding:"required"`
+}
+
+// StopSession 停止会话生成
+// POST /api/v1/sessions/:session_id/stop
+func (h *ChatHandler) StopSession(c *gin.Context) {
+	sessionID := c.Param("session_id")
+
+	var req StopSessionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	// 使用会话管理器停止流
+	stopped := h.svc.SessionMgr.StopStream(sessionID, req.MessageID)
+
+	if !stopped {
+		// 流不存在或已完成
+		Success(c, gin.H{
+			"success":    false,
+			"message":    "Stream not found or already completed",
+			"session_id": sessionID,
+			"message_id": req.MessageID,
+		})
+		return
+	}
+
+	Success(c, gin.H{
+		"success":    true,
+		"message":    "Session stopped",
+		"session_id": sessionID,
+		"message_id": req.MessageID,
+	})
+}
+
+// ContinueStream 继续接收流
+// GET /api/v1/sessions/continue-stream/:session_id?message_id=xxx
+func (h *ChatHandler) ContinueStream(c *gin.Context) {
+	sessionID := c.Param("session_id")
+	messageID := c.Query("message_id")
+
+	if messageID == "" {
+		BadRequest(c, "message_id is required")
+		return
+	}
+
+	// 获取流状态
+	stream := h.svc.SessionMgr.GetStream(sessionID, messageID)
+
+	if stream == nil {
+		// 流不存在，可能已完成或从未存在
+		Success(c, gin.H{
+			"success":    true,
+			"session_id": sessionID,
+			"message_id": messageID,
+			"done":       true,
+			"content":    "",
+			"found":      false,
+		})
+		return
+	}
+
+	// 获取当前内容
+	content := stream.GetContent()
+	done := stream.IsDone()
+
+	// 获取新增的块（用于增量更新）
+	chunks := stream.GetPartialChunks()
+
+	Success(c, gin.H{
+		"success":    true,
+		"session_id": sessionID,
+		"message_id": messageID,
+		"done":       done,
+		"content":    content,
+		"chunks":     chunks,
+		"found":      true,
+	})
 }

@@ -50,12 +50,25 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			sessions.POST("/:id/messages", h.Chat.SendMessage)
 			sessions.GET("/:id/messages", h.Chat.GetMessages)
 			sessions.POST("/:id/title", h.Chat.GenerateTitle)
+
+			// 会话流控制（WeKnora API 兼容）
+			sessions.POST("/:id/stop", h.Chat.StopSession)
+			sessions.GET("/continue-stream/:id", h.Chat.ContinueStream)
 		}
 
 		// WeKnora API 兼容 - 聊天接口
 		v1.POST("/knowledge-chat/:session_id", h.Chat.KnowledgeChat)
 		v1.POST("/agent-chat/:session_id", h.Chat.AgentChat)
 		v1.POST("/knowledge-search", h.Chat.KnowledgeSearch)
+
+		// WeKnora API 兼容 - 知识管理
+		knowledge := v1.Group("/knowledge")
+		{
+			knowledge.GET("/batch", h.Knowledge.GetKnowledgeBatch)
+			knowledge.PUT("/tags", h.Knowledge.UpdateKnowledgeTags)
+			knowledge.GET("/:id/download", h.Knowledge.DownloadKnowledge)
+			knowledge.PUT("/image/:id/:chunk_id", h.Knowledge.UpdateImageInfo)
+		}
 
 		// Messages 消息管理（独立接口）
 		messages := v1.Group("/messages")
@@ -105,6 +118,13 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			kb.GET("/:id/tags/:tag_id", h.Tag.GetTag)
 			kb.PUT("/:id/tags/:tag_id", h.Tag.UpdateTag)
 			kb.DELETE("/:id/tags/:tag_id", h.Tag.DeleteTag)
+
+			// 混合搜索（WeKnora API 兼容）
+			kb.GET("/:id/hybrid-search", h.Knowledge.HybridSearch)
+
+			// 复制知识库（WeKnora API 兼容）
+			kb.POST("/copy", h.Knowledge.CopyKnowledgeBase)
+			kb.GET("/copy/progress/:task_id", h.Knowledge.GetKBCloneProgress)
 		}
 
 		// Document 文档
@@ -124,6 +144,8 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			chunks.GET("/:id", h.Chunk.GetChunkByID)
 			chunks.PUT("/:id", h.Chunk.UpdateChunk)
 			chunks.DELETE("/:id", h.Chunk.DeleteChunk)
+			// WeKnora API 兼容
+			chunks.DELETE("/questions/:chunk_id", h.Knowledge.DeleteQuestionsByChunk)
 		}
 
 		// Index 索引管理
@@ -186,12 +208,23 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			initGroup.GET("/ollama/status", h.Initialization.CheckOllamaStatus)
 			initGroup.GET("/ollama/models", h.Initialization.ListOllamaModels)
 			initGroup.POST("/ollama/models/check", h.Initialization.CheckOllamaModels)
+			// Ollama 模型下载（WeKnora API 兼容）
+			initGroup.POST("/ollama/models/download", h.Initialization.DownloadModel)
+			initGroup.GET("/ollama/download/progress/:task_id", h.Initialization.GetDownloadProgress)
+			initGroup.GET("/ollama/download/tasks", h.Initialization.ListDownloadTasks)
+			initGroup.POST("/ollama/download/cancel/:task_id", h.Initialization.CancelDownload)
 			initGroup.POST("/test/embedding", h.Initialization.TestEmbedding)
 			initGroup.POST("/models/remote/check", h.Initialization.CheckRemoteModel)
 			initGroup.POST("/models/rerank/check", h.Initialization.CheckRerankModel)
 			initGroup.GET("/kb/:kbId/config", h.Initialization.GetKBConfig)
 			initGroup.PUT("/kb/:kbId/config", h.Initialization.UpdateKBConfig)
 			initGroup.POST("/kb/:kbId", h.Initialization.InitializeByKB)
+
+			// 文本处理（WeKnora API 兼容）
+			initGroup.POST("/extract/text-relation", h.Initialization.ExtractTextRelations)
+			initGroup.POST("/extract/fabri-tag", h.Initialization.FabriTag)
+			initGroup.POST("/extract/fabri-text", h.Initialization.FabriText)
+			initGroup.POST("/multimodal/test", h.Initialization.TestMultimodal)
 		}
 
 		// Model 模型管理
@@ -239,6 +272,12 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			tenants.GET("/:id/config", h.Tenant.GetTenantConfig)
 			tenants.PUT("/:id/config", h.Tenant.UpdateTenantConfig)
 			tenants.GET("/:id/storage", h.Tenant.GetTenantStorage)
+
+			// 租户 KV 配置（WeKnora API 兼容）
+			tenants.GET("/kv/:key", h.Tenant.GetTenantKV)
+			tenants.PUT("/kv/:key", h.Tenant.UpdateTenantKV)
+			tenants.GET("/all", h.Tenant.ListAllTenants)
+			tenants.GET("/search", h.Tenant.SearchTenants)
 		}
 
 		// File 文件管理
@@ -266,6 +305,17 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			datasets.GET("/:dataset_id/qapairs", h.Dataset.GetQAPairs)
 			datasets.GET("/qapairs/:id", h.Dataset.GetQAPair)
 		}
+
+		// System 系统管理（WeKnora API 兼容）
+		system := v1.Group("/system")
+		{
+			system.GET("/info", h.System.GetSystemInfo)
+			system.GET("/minio/buckets", h.System.ListMinioBuckets)
+		}
+
+		// WebSearch 网络搜索（WeKnora API 兼容）
+		v1.GET("/web-search/providers", h.System.GetWebSearchProviders)
+		v1.POST("/web-search/search", h.WebSearch.Search)
 	}
 
 	return r

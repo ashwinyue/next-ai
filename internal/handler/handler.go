@@ -22,6 +22,9 @@ type Handlers struct {
 	Tag            *TagHandler
 	File           *FileHandler
 	Dataset        *DatasetHandler
+	System         *SystemHandler
+	Message        *MessageHandler
+	WebSearch      *WebSearchHandler
 }
 
 // NewHandlers 创建所有处理器
@@ -43,5 +46,8 @@ func NewHandlers(svc *service.Services) *Handlers {
 		Tag:            NewTagHandler(svc.Tag),
 		File:           NewFileHandler(svc.File),
 		Dataset:        NewDatasetHandler(svc.Dataset),
+		System:         NewSystemHandler(svc),
+		Message:        NewMessageHandler(svc.Chat),
+		WebSearch:      NewWebSearchHandler(),
 	}
 }

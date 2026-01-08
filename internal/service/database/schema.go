@@ -25,11 +25,11 @@ type DataSchemaInput struct {
 
 // SchemaTool 数据 schema 工具
 type SchemaTool struct {
-	knowledgeRepo *repository.KnowledgeRepository
+	knowledgeRepo repository.KnowledgeRepository // 使用接口
 }
 
 // NewSchemaTool 创建数据 schema 工具
-func NewSchemaTool(knowledgeRepo *repository.KnowledgeRepository) *SchemaTool {
+func NewSchemaTool(knowledgeRepo repository.KnowledgeRepository) *SchemaTool {
 	return &SchemaTool{
 		knowledgeRepo: knowledgeRepo,
 	}

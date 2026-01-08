@@ -281,3 +281,188 @@ func (h *InitializationHandler) CheckRerankModel(c *gin.Context) {
 
 	Success(c, result)
 }
+
+// ========== 文本处理功能（WeKnora API 兼容）==========
+
+// ExtractTextRelationsRequest 提取文本关系请求
+type ExtractTextRelationsRequest = initialization.ExtractTextRelationsRequest
+
+// ExtractTextRelations 提取文本关系
+// POST /api/v1/initialization/extract/text-relation
+func (h *InitializationHandler) ExtractTextRelations(c *gin.Context) {
+	var req ExtractTextRelationsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.svc.Initialization.ExtractTextRelations(c.Request.Context(), &req)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
+}
+
+// FabriTagRequest 生成标签请求
+type FabriTagRequest = initialization.FabriTagRequest
+
+// FabriTag 生成文本标签
+// POST /api/v1/initialization/extract/fabri-tag
+func (h *InitializationHandler) FabriTag(c *gin.Context) {
+	var req FabriTagRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.svc.Initialization.FabriTag(c.Request.Context(), &req)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
+}
+
+// FabriTextRequest 生成文本请求
+type FabriTextRequest = initialization.FabriTextRequest
+
+// FabriText 根据标签生成文本
+// POST /api/v1/initialization/extract/fabri-text
+func (h *InitializationHandler) FabriText(c *gin.Context) {
+	var req FabriTextRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.svc.Initialization.FabriText(c.Request.Context(), &req)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
+}
+
+// TestMultimodalRequest 测试多模态请求
+type TestMultimodalRequest = initialization.TestMultimodalRequest
+
+// TestMultimodal 测试多模态功能
+// POST /api/v1/initialization/multimodal/test
+func (h *InitializationHandler) TestMultimodal(c *gin.Context) {
+	var req TestMultimodalRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.svc.Initialization.TestMultimodal(c.Request.Context(), &req)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
+}
+
+// ========== Ollama 模型下载 ==========
+
+// DownloadModelRequest 下载模型请求
+type DownloadModelRequest = initialization.DownloadModelRequest
+
+// DownloadModel 下载 Ollama 模型
+// @Summary      下载 Ollama 模型
+// @Description  启动 Ollama 模型下载任务（异步）
+// @Tags         初始化
+// @Accept       json
+// @Produce      json
+// @Param        request  body      DownloadModelRequest  true  "下载请求"
+// @Success      200      {object}  Response
+// @Router       /api/v1/initialization/ollama/models/download [post]
+func (h *InitializationHandler) DownloadModel(c *gin.Context) {
+	var req DownloadModelRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	result, err := h.svc.Initialization.DownloadModel(c.Request.Context(), &req)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, result)
+}
+
+// GetDownloadProgress 获取下载进度
+// @Summary      获取下载进度
+// @Description  获取 Ollama 模型下载任务进度
+// @Tags         初始化
+// @Accept       json
+// @Produce      json
+// @Param        task_id  path      string  true  "任务 ID"
+// @Success      200      {object}  Response
+// @Router       /api/v1/initialization/ollama/download/progress/{task_id} [get]
+func (h *InitializationHandler) GetDownloadProgress(c *gin.Context) {
+	taskID := c.Param("task_id")
+
+	progress, err := h.svc.Initialization.GetDownloadProgress(c.Request.Context(), taskID)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, progress)
+}
+
+// ListDownloadTasks 列出所有下载任务
+// @Summary      列出下载任务
+// @Description  列出所有 Ollama 模型下载任务
+// @Tags         初始化
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  Response
+// @Router       /api/v1/initialization/ollama/download/tasks [get]
+func (h *InitializationHandler) ListDownloadTasks(c *gin.Context) {
+	tasks, err := h.svc.Initialization.ListDownloadTasks(c.Request.Context())
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, gin.H{"tasks": tasks})
+}
+
+// CancelDownloadRequest 取消下载请求
+type CancelDownloadRequest struct {
+	TaskID string `json:"task_id" binding:"required"`
+}
+
+// CancelDownload 取消下载任务
+// @Summary      取消下载任务
+// @Description  取消正在进行的 Ollama 模型下载任务
+// @Tags         初始化
+// @Accept       json
+// @Produce      json
+// @Param        task_id  path      string  true  "任务 ID"
+// @Success      200      {object}  Response
+// @Router       /api/v1/initialization/ollama/download/cancel/{task_id} [post]
+func (h *InitializationHandler) CancelDownload(c *gin.Context) {
+	taskID := c.Param("task_id")
+
+	err := h.svc.Initialization.CancelDownload(c.Request.Context(), taskID)
+	if err != nil {
+		Error(c, err)
+		return
+	}
+
+	Success(c, gin.H{
+		"success": true,
+		"message": "下载任务已取消",
+		"task_id": taskID,
+	})
+}

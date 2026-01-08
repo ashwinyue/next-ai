@@ -22,7 +22,6 @@ type Reranker interface {
 // ========== 分数重排 ==========
 
 // NewScoreReranker 创建分数重排器
-// 使用简单的 newXXX() 函数，不使用工厂模式
 func NewScoreReranker() Reranker {
 	return &scoreReranker{}
 }

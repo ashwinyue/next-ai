@@ -13,7 +13,7 @@ import (
 
 // LocalStorage 本地文件存储
 type LocalStorage struct {
-	basePath string // 基础路径
+	basePath  string // 基础路径
 	urlPrefix string // URL前缀，用于生成访问URL
 }
 
@@ -84,6 +84,12 @@ func (s *LocalStorage) Delete(ctx context.Context, filePath string) error {
 // GetURL 获取文件的访问URL
 func (s *LocalStorage) GetURL(filePath string) string {
 	return fmt.Sprintf("%s/%s", s.urlPrefix, filePath)
+}
+
+// ListBuckets 列出存储桶（本地存储返回空列表）
+func (s *LocalStorage) ListBuckets(ctx context.Context) ([]map[string]interface{}, error) {
+	// 本地存储没有 bucket 概念，返回空列表
+	return []map[string]interface{}{}, nil
 }
 
 // extensionByContentType 根据内容类型返回扩展名

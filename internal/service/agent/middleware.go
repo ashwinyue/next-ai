@@ -177,7 +177,7 @@ func repairJSON(input string) string {
 // 包含 JSON 修复和错误处理
 func DefaultMiddlewares() []compose.ToolMiddleware {
 	return []compose.ToolMiddleware{
-		NewJsonFixMiddleware(),      // 先修复 JSON
+		NewJsonFixMiddleware(),         // 先修复 JSON
 		NewErrorRemoverMiddleware(nil), // 再处理错误
 	}
 }

@@ -13,9 +13,9 @@ import (
 type ModelType string
 
 const (
-	ModelTypeEmbedding   ModelType = "Embedding"   // 向量化模型
-	ModelTypeRerank      ModelType = "Rerank"      // 重排序模型
-	ModelTypeChatModel   ModelType = "ChatModel"   // 对话模型
+	ModelTypeEmbedding ModelType = "Embedding" // 向量化模型
+	ModelTypeRerank    ModelType = "Rerank"    // 重排序模型
+	ModelTypeChatModel ModelType = "ChatModel" // 对话模型
 )
 
 // ModelStatus 模型状态
@@ -49,19 +49,19 @@ const (
 
 // EmbeddingParameters 向量化参数
 type EmbeddingParameters struct {
-	Dimension            int `json:"dimension"`               // 向量维度
+	Dimension            int `json:"dimension"`              // 向量维度
 	TruncatePromptTokens int `json:"truncate_prompt_tokens"` // 截断提示词 tokens
 }
 
 // ModelParameters 模型参数
 type ModelParameters struct {
-	BaseURL             string                `json:"base_url"`              // API 基础 URL
-	APIKey              string                `json:"api_key"`               // API 密钥
-	InterfaceType       string                `json:"interface_type"`        // 接口类型
-	EmbeddingParameters EmbeddingParameters  `json:"embedding_parameters"` // 向量化参数
-	ParameterSize       string                `json:"parameter_size"`        // 参数大小 (如 "7B", "13B")
-	Provider            string                `json:"provider"`              // 提供商标识
-	ExtraConfig         map[string]string     `json:"extra_config"`          // 额外配置
+	BaseURL             string              `json:"base_url"`             // API 基础 URL
+	APIKey              string              `json:"api_key"`              // API 密钥
+	InterfaceType       string              `json:"interface_type"`       // 接口类型
+	EmbeddingParameters EmbeddingParameters `json:"embedding_parameters"` // 向量化参数
+	ParameterSize       string              `json:"parameter_size"`       // 参数大小 (如 "7B", "13B")
+	Provider            string              `json:"provider"`             // 提供商标识
+	ExtraConfig         map[string]string   `json:"extra_config"`         // 额外配置
 }
 
 // Value 实现 driver.Valuer 接口
@@ -83,18 +83,18 @@ func (m *ModelParameters) Scan(value interface{}) error {
 
 // Model AI 模型
 type Model struct {
-	ID          string           `json:"id" gorm:"type:varchar(36);primaryKey"`
-	Name        string           `json:"name" gorm:"type:varchar(255);not null"`
-	Type        ModelType        `json:"type" gorm:"type:varchar(50);not null"`
-	Source      ModelSource      `json:"source" gorm:"type:varchar(50);not null"`
-	Description string           `json:"description" gorm:"type:text"`
-	Parameters  ModelParameters  `json:"parameters" gorm:"type:json;not null"`
-	IsDefault   bool             `json:"is_default" gorm:"default:false"`
-	IsBuiltin   bool             `json:"is_builtin" gorm:"default:false"`
-	Status      ModelStatus      `json:"status" gorm:"type:varchar(50);default:'active'"`
-	CreatedAt   int64            `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   int64            `json:"updated_at" gorm:"autoUpdateTime"`
-	DeletedAt   gorm.DeletedAt    `json:"deleted_at,omitempty" gorm:"index"`
+	ID          string          `json:"id" gorm:"type:varchar(36);primaryKey"`
+	Name        string          `json:"name" gorm:"type:varchar(255);not null"`
+	Type        ModelType       `json:"type" gorm:"type:varchar(50);not null"`
+	Source      ModelSource     `json:"source" gorm:"type:varchar(50);not null"`
+	Description string          `json:"description" gorm:"type:text"`
+	Parameters  ModelParameters `json:"parameters" gorm:"type:json;not null"`
+	IsDefault   bool            `json:"is_default" gorm:"default:false"`
+	IsBuiltin   bool            `json:"is_builtin" gorm:"default:false"`
+	Status      ModelStatus     `json:"status" gorm:"type:varchar(50);default:'active'"`
+	CreatedAt   int64           `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   int64           `json:"updated_at" gorm:"autoUpdateTime"`
+	DeletedAt   gorm.DeletedAt  `json:"deleted_at,omitempty" gorm:"index"`
 }
 
 // BeforeCreate GORM 钩子，创建前生成 UUID

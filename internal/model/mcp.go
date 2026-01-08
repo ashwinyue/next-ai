@@ -21,17 +21,17 @@ const (
 
 // MCPService MCP 服务配置
 type MCPService struct {
-	ID             string              `json:"id" gorm:"type:varchar(36);primaryKey"`
-	Name           string              `json:"name" gorm:"type:varchar(255);not null"`
-	Description    string              `json:"description" gorm:"type:text"`
-	Enabled        bool                `json:"enabled" gorm:"default:true;index"`
-	TransportType  MCPTransportType    `json:"transport_type" gorm:"type:varchar(50);not null"`
-	URL            *string             `json:"url,omitempty" gorm:"type:varchar(512)"` // SSE/HTTP Streamable 需要
-	Headers        MCPHeaders          `json:"headers" gorm:"type:json"`
-	AuthConfig     *MCPAuthConfig      `json:"auth_config" gorm:"type:json"`
-	AdvancedConfig *MCPAdvancedConfig  `json:"advanced_config" gorm:"type:json"`
-	StdioConfig    *MCPStdioConfig     `json:"stdio_config,omitempty" gorm:"type:json"` // Stdio 传输需要
-	EnvVars        MCPEnvVars          `json:"env_vars,omitempty" gorm:"type:json"`      // 环境变量
+	ID             string             `json:"id" gorm:"type:varchar(36);primaryKey"`
+	Name           string             `json:"name" gorm:"type:varchar(255);not null"`
+	Description    string             `json:"description" gorm:"type:text"`
+	Enabled        bool               `json:"enabled" gorm:"default:true;index"`
+	TransportType  MCPTransportType   `json:"transport_type" gorm:"type:varchar(50);not null"`
+	URL            *string            `json:"url,omitempty" gorm:"type:varchar(512)"` // SSE/HTTP Streamable 需要
+	Headers        MCPHeaders         `json:"headers" gorm:"type:json"`
+	AuthConfig     *MCPAuthConfig     `json:"auth_config" gorm:"type:json"`
+	AdvancedConfig *MCPAdvancedConfig `json:"advanced_config" gorm:"type:json"`
+	StdioConfig    *MCPStdioConfig    `json:"stdio_config,omitempty" gorm:"type:json"` // Stdio 传输需要
+	EnvVars        MCPEnvVars         `json:"env_vars,omitempty" gorm:"type:json"`     // 环境变量
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
@@ -87,9 +87,9 @@ type MCPResource struct {
 
 // MCPTestResult MCP 服务测试结果
 type MCPTestResult struct {
-	Success   bool            `json:"success"`
-	Message   string          `json:"message,omitempty"`
-	Tools     []*MCPTool      `json:"tools,omitempty"`
+	Success   bool           `json:"success"`
+	Message   string         `json:"message,omitempty"`
+	Tools     []*MCPTool     `json:"tools,omitempty"`
 	Resources []*MCPResource `json:"resources,omitempty"`
 }
 

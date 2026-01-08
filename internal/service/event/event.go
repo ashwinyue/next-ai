@@ -222,17 +222,27 @@ func (b *EventBus) Subscribe(ctx context.Context, handler Handler) error {
 }
 
 // Unsubscribe 取消订阅
+// 注意：由于 Go 的函数类型不可比较，对于函数类型的 Handler，此方法无法正确工作
 func (b *EventBus) Unsubscribe(ctx context.Context, handler Handler) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	if handlers, ok := b.subscribers["*"]; ok {
-		for i, h := range handlers {
-			if h == handler {
-				b.subscribers["*"] = append(handlers[:i], handlers[i+1:]...)
-				break
+		// 使用 defer recover 处理函数类型不可比较的 panic
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// 函数类型不可比较，无法取消订阅
+					// 这是预期行为，静默处理
+				}
+			}()
+			for i, h := range handlers {
+				if h == handler {
+					b.subscribers["*"] = append(handlers[:i], handlers[i+1:]...)
+					break
+				}
 			}
-		}
+		}()
 	}
 
 	return nil

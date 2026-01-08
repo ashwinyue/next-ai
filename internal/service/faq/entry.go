@@ -83,10 +83,10 @@ type BatchUpsertResponse struct {
 
 // ExportEntry 导出的FAQ条目（简化格式）
 type ExportEntry struct {
-	StandardQuestion  string   `json:"standard_question"`
-	SimilarQuestions  []string `json:"similar_questions"`
-	Answers           []string `json:"answers"`
-	Category          string   `json:"category"`
+	StandardQuestion string   `json:"standard_question"`
+	SimilarQuestions []string `json:"similar_questions"`
+	Answers          []string `json:"answers"`
+	Category         string   `json:"category"`
 }
 
 // ========== 核心方法 ==========
@@ -326,8 +326,8 @@ func (s *EntryService) ExportEntries(ctx context.Context, category string) ([]by
 		exportData = append(exportData, ExportEntry{
 			StandardQuestion: entry.StandardQuestion,
 			SimilarQuestions: entry.GetSimilarQuestions(),
-			Answers:           entry.GetAnswers(),
-			Category:          entry.Category,
+			Answers:          entry.GetAnswers(),
+			Category:         entry.Category,
 		})
 	}
 

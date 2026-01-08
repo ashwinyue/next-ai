@@ -29,10 +29,10 @@ type AppConfig struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Host        string
-	Port        int
-	Mode        string
-	ReadTimeout int
+	Host         string
+	Port         int
+	Mode         string
+	ReadTimeout  int
 	WriteTimeout int
 }
 
@@ -116,9 +116,9 @@ type EmbeddingConfig struct {
 
 // FileConfig 文件存储配置
 type FileConfig struct {
-	Type   string            // local, minio, cos
-	Local  LocalFileConfig
-	MinIO  MinIOFileConfig
+	Type  string // local, minio, cos
+	Local LocalFileConfig
+	MinIO MinIOFileConfig
 }
 
 // LocalFileConfig 本地文件存储配置

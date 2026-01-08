@@ -22,3 +22,16 @@ type KnowledgeTag struct {
 func (KnowledgeTag) TableName() string {
 	return "knowledge_tags"
 }
+
+// DocumentTag 文档-标签关联表
+type DocumentTag struct {
+	ID         string    `gorm:"primaryKey;type:varchar(36)" json:"id"`
+	DocumentID string    `gorm:"type:varchar(36);not null;index:idx_doc_tag;index:idx_doc_tag_unique,unique" json:"document_id"`
+	TagID      string    `gorm:"type:varchar(36);not null;index:idx_doc_tag_unique,unique" json:"tag_id"`
+	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+// TableName 指定表名
+func (DocumentTag) TableName() string {
+	return "document_tags"
+}

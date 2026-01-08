@@ -5,49 +5,89 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ashwinyue/next-ai/internal/service/query"
 	"github.com/ashwinyue/next-ai/internal/service/types"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/retriever"
-	"github.com/cloudwego/eino/schema"
 )
 
 // Service RAG 服务
 type Service struct {
-	chatModel  model.ChatModel
-	retriever  retriever.Retriever
-	query      *query.Optimizer
-	rerankers  []types.Reranker
+	chatModel      model.ChatModel
+	baseRetriever  retriever.Retriever // 基础检索器
+	multiRetriever retriever.Retriever // 多查询检索器（Eino 组件）
+	rerankers      []types.Reranker
 }
 
-// NewService 创建 RAG 服务
+// ServiceConfig RAG 服务配置
+type ServiceConfig struct {
+	ChatModel model.ChatModel
+	Retriever retriever.Retriever
+	Rerankers []types.Reranker
+
+	// 多查询配置
+	EnableMultiQuery bool            // 是否启用多查询检索
+	MaxQueriesNum    int             // 最大查询数量（使用 LLM 生成）
+	RewriteLLM       model.ChatModel // 用于生成查询变体的 LLM（可选，不传则用 ChatModel）
+}
+
+// NewService 创建 RAG 服务（简单模式，无多查询）
 func NewService(
 	chatModel model.ChatModel,
 	retriever retriever.Retriever,
-	queryOpt *query.Optimizer,
 	rerankers []types.Reranker,
 ) *Service {
 	return &Service{
-		chatModel: chatModel,
-		retriever: retriever,
-		query:     queryOpt,
-		rerankers: rerankers,
+		chatModel:     chatModel,
+		baseRetriever: retriever,
+		rerankers:     rerankers,
 	}
+}
+
+// NewServiceWithConfig 创建 RAG 服务（带完整配置）
+func NewServiceWithConfig(ctx context.Context, cfg *ServiceConfig) (*Service, error) {
+	svc := &Service{
+		chatModel:     cfg.ChatModel,
+		baseRetriever: cfg.Retriever,
+		rerankers:     cfg.Rerankers,
+	}
+
+	// 如果启用多查询检索，创建多查询检索器
+	if cfg.EnableMultiQuery {
+		rewriteLLM := cfg.RewriteLLM
+		if rewriteLLM == nil {
+			rewriteLLM = cfg.ChatModel
+		}
+
+		var err error
+		// 融合函数不需要预计算，直接使用闭包
+		svc.multiRetriever, err = NewMultiQueryRetriever(ctx, &MultiQueryConfig{
+			Retriever:     cfg.Retriever,
+			RewriteLLM:    rewriteLLM,
+			MaxQueriesNum: cfg.MaxQueriesNum,
+			FusionFunc:    MultiQueryWeightedFusion(nil), // 使用加权融合
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create multiquery retriever: %w", err)
+		}
+	}
+
+	return svc, nil
 }
 
 // RetrieveRequest 检索请求
 type RetrieveRequest struct {
-	Query          string `json:"query"`
-	TopK           int    `json:"top_k"`
-	EnableOptimize bool   `json:"enable_optimize"`
-	EnableRerank   bool   `json:"enable_rerank"`
+	Query            string `json:"query"`
+	TopK             int    `json:"top_k"`
+	EnableOptimize   bool   `json:"enable_optimize"`
+	EnableRerank     bool   `json:"enable_rerank"`
+	EnableMultiQuery bool   `json:"enable_multi_query"` // 是否使用 Eino 多查询检索器
 }
 
 // RetrieveResponse 检索响应
 type RetrieveResponse struct {
-	Query     string              `json:"query"`
-	Documents []types.Document    `json:"documents"`
-	Total     int                `json:"total"`
+	Query     string           `json:"query"`
+	Documents []types.Document `json:"documents"`
+	Total     int              `json:"total"`
 }
 
 // Retrieve 执行 RAG 检索
@@ -61,44 +101,17 @@ func (s *Service) Retrieve(ctx context.Context, req *RetrieveRequest) (*Retrieve
 		topK = 10
 	}
 
-	// 1. 查询优化（可选）
-	var queries []string
-	if req.EnableOptimize && s.query != nil {
-		optimized, err := s.query.Optimize(ctx, req.Query)
-		if err != nil {
-			queries = []string{req.Query}
-		} else {
-			queries = optimized.GetQueries()
-		}
+	// 选择检索器：统一使用 Eino 多查询检索器
+	var retrieverForUse retriever.Retriever
+	if (req.EnableMultiQuery || req.EnableOptimize) && s.multiRetriever != nil {
+		// 使用 Eino NewMultiQueryRetriever（EnableOptimize 重定向到 Eino 组件）
+		retrieverForUse = s.multiRetriever
 	} else {
-		queries = []string{req.Query}
+		// 使用基础检索器
+		retrieverForUse = s.baseRetriever
 	}
 
-	// 2. 多查询检索并去重
-	allDocs := make([]*schema.Document, 0)
-	seenIDs := make(map[string]bool)
-
-	for _, q := range queries {
-		if s.retriever == nil {
-			continue
-		}
-
-		docs, err := s.retriever.Retrieve(ctx, q)
-		if err != nil {
-			continue // 某个查询失败不影响其他
-		}
-
-		for _, doc := range docs {
-			if doc.ID != "" && !seenIDs[doc.ID] {
-				seenIDs[doc.ID] = true
-				allDocs = append(allDocs, doc)
-			} else if doc.ID == "" {
-				allDocs = append(allDocs, doc)
-			}
-		}
-	}
-
-	if len(allDocs) == 0 {
+	if retrieverForUse == nil {
 		return &RetrieveResponse{
 			Query:     req.Query,
 			Documents: []types.Document{},
@@ -106,25 +119,39 @@ func (s *Service) Retrieve(ctx context.Context, req *RetrieveRequest) (*Retrieve
 		}, nil
 	}
 
-	// 3. 重排（可选）
+	// 执行检索
+	docs, err := retrieverForUse.Retrieve(ctx, req.Query)
+	if err != nil {
+		return nil, fmt.Errorf("retrieve failed: %w", err)
+	}
+
+	if len(docs) == 0 {
+		return &RetrieveResponse{
+			Query:     req.Query,
+			Documents: []types.Document{},
+			Total:     0,
+		}, nil
+	}
+
+	// 重排（可选）
 	if req.EnableRerank && len(s.rerankers) > 0 {
 		for _, rnk := range s.rerankers {
-			reranked, err := rnk.Rerank(ctx, req.Query, allDocs)
+			reranked, err := rnk.Rerank(ctx, req.Query, docs)
 			if err != nil {
 				continue
 			}
-			allDocs = reranked
+			docs = reranked
 		}
 	}
 
-	// 4. 限制返回数量
-	if len(allDocs) > topK {
-		allDocs = allDocs[:topK]
+	// 限制返回数量
+	if len(docs) > topK {
+		docs = docs[:topK]
 	}
 
-	// 5. 转换为响应格式
-	docs := make([]types.Document, len(allDocs))
-	for i, doc := range allDocs {
+	// 转换为响应格式
+	result := make([]types.Document, len(docs))
+	for i, doc := range docs {
 		metadata := make(map[string]interface{})
 		if doc.MetaData != nil {
 			for k, v := range doc.MetaData {
@@ -132,7 +159,7 @@ func (s *Service) Retrieve(ctx context.Context, req *RetrieveRequest) (*Retrieve
 			}
 		}
 
-		docs[i] = types.Document{
+		result[i] = types.Document{
 			ID:       doc.ID,
 			Content:  doc.Content,
 			Score:    doc.Score(),
@@ -142,8 +169,8 @@ func (s *Service) Retrieve(ctx context.Context, req *RetrieveRequest) (*Retrieve
 
 	return &RetrieveResponse{
 		Query:     req.Query,
-		Documents: docs,
-		Total:     len(docs),
+		Documents: result,
+		Total:     len(result),
 	}, nil
 }
 

@@ -8,19 +8,19 @@ import (
 // FAQEntry FAQ条目（完整版）
 type FAQEntry struct {
 	ID                string    `gorm:"primaryKey;size:36"`
-	StandardQuestion string    `gorm:"type:text;not null"`        // 标准问题
-	SimilarQuestions string    `gorm:"type:text"`                 // 相似问题（JSON数组）
-	NegativeQuestions string    `gorm:"type:text"`                 // 反例问题（JSON数组）
-	Answers           string    `gorm:"type:text;not null"`        // 答案（JSON数组）
-	AnswerStrategy    string    `gorm:"size:20;default:all"`       // 答案策略: all, random
-	Category          string    `gorm:"size:100;index"`             // 分类/标签
-	IsEnabled         bool      `gorm:"index;default:true"`         // 是否启用
-	IsRecommended     bool      `gorm:"default:false"`             // 是否推荐
-	Priority          int       `gorm:"default:0"`                 // 优先级
-	HitCount          int       `gorm:"default:0"`                 // 命中次数
-	Source            string    `gorm:"size:100"`                  // 来源
-	Version           int       `gorm:"default:1"`                 // 版本号
-	ContentHash       string    `gorm:"size:64;index"`             // 内容哈希（用于去重）
+	StandardQuestion  string    `gorm:"type:text;not null"`  // 标准问题
+	SimilarQuestions  string    `gorm:"type:text"`           // 相似问题（JSON数组）
+	NegativeQuestions string    `gorm:"type:text"`           // 反例问题（JSON数组）
+	Answers           string    `gorm:"type:text;not null"`  // 答案（JSON数组）
+	AnswerStrategy    string    `gorm:"size:20;default:all"` // 答案策略: all, random
+	Category          string    `gorm:"size:100;index"`      // 分类/标签
+	IsEnabled         bool      `gorm:"index;default:true"`  // 是否启用
+	IsRecommended     bool      `gorm:"default:false"`       // 是否推荐
+	Priority          int       `gorm:"default:0"`           // 优先级
+	HitCount          int       `gorm:"default:0"`           // 命中次数
+	Source            string    `gorm:"size:100"`            // 来源
+	Version           int       `gorm:"default:1"`           // 版本号
+	ContentHash       string    `gorm:"size:64;index"`       // 内容哈希（用于去重）
 	CreatedAt         time.Time `gorm:"autoCreateTime"`
 	UpdatedAt         time.Time `gorm:"autoUpdateTime"`
 }
@@ -112,7 +112,7 @@ const (
 type FAQImportProgress struct {
 	TaskID    string `gorm:"primaryKey;size:36"`
 	Status    string `gorm:"size:20;index"` // pending, processing, completed, failed
-	Progress  int    `gorm:"default:0"`      // 0-100
+	Progress  int    `gorm:"default:0"`     // 0-100
 	Total     int    `gorm:"default:0"`
 	Processed int    `gorm:"default:0"`
 	Message   string `gorm:"type:text"`
@@ -143,7 +143,7 @@ type FAQEntryFieldsUpdate struct {
 
 // FAQEntryFieldsBatchUpdate 批量更新FAQ条目字段的请求
 type FAQEntryFieldsBatchUpdate struct {
-	ByID      map[string]FAQEntryFieldsUpdate `json:"by_id,omitempty"`      // 按条目ID更新
+	ByID       map[string]FAQEntryFieldsUpdate `json:"by_id,omitempty"`       // 按条目ID更新
 	ByCategory map[string]FAQEntryFieldsUpdate `json:"by_category,omitempty"` // 按分类批量更新
-	ExcludeIDs []string                         `json:"exclude_ids,omitempty"` // 在ByCategory操作中需要排除的ID列表
+	ExcludeIDs []string                        `json:"exclude_ids,omitempty"` // 在ByCategory操作中需要排除的ID列表
 }

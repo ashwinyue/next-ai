@@ -8,6 +8,7 @@ type User struct {
 	Username     string    `gorm:"uniqueIndex;size:100;not null" json:"username"`
 	Email        string    `gorm:"uniqueIndex;size:255;not null" json:"email"`
 	PasswordHash string    `gorm:"size:255;not null" json:"-"`
+	TenantID     string    `gorm:"index;size:36" json:"tenant_id"` // 租户 ID
 	Avatar       string    `gorm:"size:500" json:"avatar"`
 	IsActive     bool      `gorm:"default:true" json:"is_active"`
 	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`

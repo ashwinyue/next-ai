@@ -21,21 +21,21 @@ func NewService(repo *repository.Repositories) *Service {
 
 // CreateFAQRequest 创建FAQ请求
 type CreateFAQRequest struct {
-	Question   string `json:"question" binding:"required"`
-	Answer     string `json:"answer" binding:"required"`
-	Category   string `json:"category"`
-	Priority   int    `json:"priority"`
+	Question string `json:"question" binding:"required"`
+	Answer   string `json:"answer" binding:"required"`
+	Category string `json:"category"`
+	Priority int    `json:"priority"`
 }
 
 // CreateFAQ 创建FAQ
 func (s *Service) CreateFAQ(ctx context.Context, req *CreateFAQRequest) (*model.FAQ, error) {
 	faq := &model.FAQ{
-		ID:        uuid.New().String(),
-		Question:  req.Question,
-		Answer:    req.Answer,
-		Category:  req.Category,
-		Priority:  req.Priority,
-		IsActive:  true,
+		ID:       uuid.New().String(),
+		Question: req.Question,
+		Answer:   req.Answer,
+		Category: req.Category,
+		Priority: req.Priority,
+		IsActive: true,
 	}
 
 	if err := s.repo.FAQ.Create(faq); err != nil {

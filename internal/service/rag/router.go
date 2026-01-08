@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/cloudwego/eino/components/retriever"
-	"github.com/cloudwego/eino/schema"
 	einoRouter "github.com/cloudwego/eino/flow/retriever/router"
+	"github.com/cloudwego/eino/schema"
 )
 
 // RouterConfig 路由检索器配置
@@ -71,7 +71,8 @@ func convertFusionFunc(fn func(ctx context.Context, result map[string][]*schema.
 // 根据查询中的关键词匹配选择检索器
 //
 // 参数：
-//   rules - 路由规则：map[检索器名称][]关键词
+//
+//	rules - 路由规则：map[检索器名称][]关键词
 //
 // 示例：
 //
@@ -160,11 +161,9 @@ func WeightedFusion(weights map[string]float64) func(ctx context.Context, result
 		// 转换为切片并排序
 		resultDocs := make([]*schema.Document, 0, len(scoreMap))
 		for _, ds := range scoreMap {
-			// 更新文档分数（通过修改元数据或使用新结构）
-			// 注意：schema.Document 是不可变的，需要创建新文档
-			newDoc := *ds.doc
-			// 分数已通过 Score() 方法计算，这里我们保持原样
-			resultDocs = append(resultDocs, &newDoc)
+			// 创建新文档并设置加权分数
+			newDoc := ds.doc.WithScore(ds.score)
+			resultDocs = append(resultDocs, newDoc)
 		}
 
 		// 按分数排序

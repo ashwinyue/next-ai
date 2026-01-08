@@ -87,12 +87,12 @@ func (s *AnalysisSession) Close() error {
 
 // AnalysisTool 数据分析工具
 type AnalysisTool struct {
-	knowledgeRepo *repository.KnowledgeRepository
+	knowledgeRepo repository.KnowledgeRepository // 使用接口
 	sessionID     string
 }
 
 // NewAnalysisTool 创建数据分析工具
-func NewAnalysisTool(knowledgeRepo *repository.KnowledgeRepository, sessionID string) *AnalysisTool {
+func NewAnalysisTool(knowledgeRepo repository.KnowledgeRepository, sessionID string) *AnalysisTool {
 	return &AnalysisTool{
 		knowledgeRepo: knowledgeRepo,
 		sessionID:     sessionID,

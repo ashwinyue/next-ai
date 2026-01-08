@@ -163,3 +163,61 @@ func (s *Service) FindOrCreateTagByName(ctx context.Context, kbID, name string) 
 
 	return newTag, nil
 }
+
+// ========== 文档-标签关联管理 ==========
+
+// GetDocumentTags 获取文档的所有标签
+func (s *Service) GetDocumentTags(ctx context.Context, documentID string) ([]*model.KnowledgeTag, error) {
+	tags, err := s.repo.Tag.GetTagsByDocumentID(ctx, documentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document tags: %w", err)
+	}
+	return tags, nil
+}
+
+// SetDocumentTags 设置文档的标签
+func (s *Service) SetDocumentTags(ctx context.Context, documentID string, tagIDs []string) error {
+	if err := s.repo.Tag.SetDocumentTags(ctx, documentID, tagIDs); err != nil {
+		return fmt.Errorf("failed to set document tags: %w", err)
+	}
+	return nil
+}
+
+// TagUpdate 标签更新项
+type TagUpdate struct {
+	KnowledgeID string   `json:"knowledge_id"`
+	TagIDs      []string `json:"tag_ids"`
+}
+
+// BatchUpdateDocumentTags 批量更新文档标签（WeKnora API 兼容）
+func (s *Service) BatchUpdateDocumentTags(ctx context.Context, updates []TagUpdate) error {
+	// 转换为 repository 格式
+	repoUpdates := make([]map[string]interface{}, 0, len(updates))
+	for _, u := range updates {
+		repoUpdates = append(repoUpdates, map[string]interface{}{
+			"document_id": u.KnowledgeID,
+			"tag_ids":     u.TagIDs,
+		})
+	}
+
+	if err := s.repo.Tag.BatchUpdateDocumentTags(ctx, repoUpdates); err != nil {
+		return fmt.Errorf("failed to batch update document tags: %w", err)
+	}
+	return nil
+}
+
+// AddTagToDocument 为文档添加单个标签
+func (s *Service) AddTagToDocument(ctx context.Context, documentID, tagID string) error {
+	if err := s.repo.Tag.AddTagToDocument(ctx, documentID, tagID); err != nil {
+		return fmt.Errorf("failed to add tag to document: %w", err)
+	}
+	return nil
+}
+
+// RemoveTagFromDocument 移除文档的单个标签
+func (s *Service) RemoveTagFromDocument(ctx context.Context, documentID, tagID string) error {
+	if err := s.repo.Tag.RemoveTagFromDocument(ctx, documentID, tagID); err != nil {
+		return fmt.Errorf("failed to remove tag from document: %w", err)
+	}
+	return nil
+}

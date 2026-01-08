@@ -37,11 +37,13 @@ func DefaultMMRConfig() *MMRConfig {
 // 减少检索结果冗余，提高多样性
 //
 // 参数:
-//   docs - 候选文档列表（已按相关性排序）
-//   cfg - MMR 配置
+//
+//	docs - 候选文档列表（已按相关性排序）
+//	cfg - MMR 配置
 //
 // 返回:
-//   经过 MMR 处理后的文档列表
+//
+//	经过 MMR 处理后的文档列表
 func ApplyMMR(docs []*schema.Document, cfg *MMRConfig) []*schema.Document {
 	if cfg == nil {
 		cfg = DefaultMMRConfig()
@@ -121,9 +123,9 @@ func DefaultCompositeConfig() *CompositeScoreConfig {
 
 // DocumentWithSource 带来源信息的文档
 type DocumentWithSource struct {
-	Document    *schema.Document
-	Source      string // 来源标识 (如 "es8", "milvus")
-	BaseScore   float64
+	Document      *schema.Document
+	Source        string // 来源标识 (如 "es8", "milvus")
+	BaseScore     float64
 	PositionPrior float64 // 位置优先级
 }
 
@@ -186,7 +188,7 @@ func DefaultContentDedupConfig() *ContentDedupConfig {
 
 // ContentDedupResult 内容去重结果
 type ContentDedupResult struct {
-	Unique       []*schema.Document
+	Unique         []*schema.Document
 	DuplicateCount int
 	RemovedCount   int
 }
@@ -324,14 +326,14 @@ func clamp(v, min, max float64) float64 {
 
 // RetrievalStats 检索统计信息
 type RetrievalStats struct {
-	Query           string
-	TotalResults    int
-	UniqueResults   int
-	DuplicateCount  int
-	AverageScore    float64
-	TopScore        float64
-	BottomScore     float64
-	Sources         map[string]int // 来源计数
+	Query          string
+	TotalResults   int
+	UniqueResults  int
+	DuplicateCount int
+	AverageScore   float64
+	TopScore       float64
+	BottomScore    float64
+	Sources        map[string]int // 来源计数
 }
 
 // CalculateStats 计算检索统计信息
@@ -343,7 +345,7 @@ func CalculateStats(docs []*schema.Document) *RetrievalStats {
 	}
 
 	stats := &RetrievalStats{
-		TotalResults:  len(docs),
+		TotalResults: len(docs),
 		Sources:      make(map[string]int),
 	}
 
@@ -412,14 +414,14 @@ func formatFloat(f float64) string {
 
 // BatchConfig 批量处理配置
 type BatchConfig struct {
-	BatchSize    int
+	BatchSize        int
 	MaxContentLength int
 }
 
 // DefaultBatchConfig 默认批量配置
 func DefaultBatchConfig() *BatchConfig {
 	return &BatchConfig{
-		BatchSize:       15,
+		BatchSize:        15,
 		MaxContentLength: 800,
 	}
 }

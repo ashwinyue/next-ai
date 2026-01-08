@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -29,8 +29,8 @@ type State struct {
 // Config 会话配置
 type Config struct {
 	MaxHistoryMessages       int           // 最大保留历史消息数
-	HistoryTTL                time.Duration // 历史 TTL
-	CheckpointTTL             time.Duration // Checkpoint TTL
+	HistoryTTL               time.Duration // 历史 TTL
+	CheckpointTTL            time.Duration // Checkpoint TTL
 	EnableContextCompression bool          // 是否启用上下文压缩
 	MaxContextTokens         int           // 最大上下文 Token 数
 	CompressionThreshold     int           // 触发压缩的阈值
@@ -40,8 +40,8 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		MaxHistoryMessages:       100,
-		HistoryTTL:                24 * time.Hour,
-		CheckpointTTL:             24 * time.Hour,
+		HistoryTTL:               24 * time.Hour,
+		CheckpointTTL:            24 * time.Hour,
 		EnableContextCompression: false,
 		MaxContextTokens:         4000,
 		CompressionThreshold:     20,

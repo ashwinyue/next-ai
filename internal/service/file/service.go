@@ -207,3 +207,33 @@ func (s *Service) DeleteByKnowledgeID(ctx context.Context, knowledgeID string) e
 
 	return s.repo.File.DeleteByKnowledgeID(knowledgeID)
 }
+
+// BucketsLister 支持 bucket 列表的存储接口
+type BucketsLister interface {
+	ListBuckets(ctx context.Context) ([]map[string]interface{}, error)
+}
+
+// ListBuckets 列出存储 buckets（如果存储类型支持）
+func (s *Service) ListBuckets(ctx context.Context) ([]map[string]interface{}, error) {
+	lister, ok := s.storage.(BucketsLister)
+	if !ok {
+		// 存储类型不支持 buckets，返回空列表
+		return []map[string]interface{}{}, nil
+	}
+	return lister.ListBuckets(ctx)
+}
+
+// DownloadKnowledge 下载知识文档文件
+func (s *Service) DownloadKnowledge(ctx context.Context, documentID string) (*model.Document, io.ReadCloser, error) {
+	doc, err := s.repo.Knowledge.GetDocumentByID(documentID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("document not found: %w", err)
+	}
+
+	reader, err := s.storage.Get(ctx, doc.FilePath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get file content: %w", err)
+	}
+
+	return doc, reader, nil
+}

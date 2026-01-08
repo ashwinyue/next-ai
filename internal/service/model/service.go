@@ -101,8 +101,8 @@ func (s *Service) ListModelProviders(ctx context.Context) []ModelProvider {
 
 // ModelProvider 模型提供商信息
 type ModelProvider struct {
-	Name        string          `json:"name"`
-	DisplayName string          `json:"display_name"`
-	Description string          `json:"description"`
+	Name        string            `json:"name"`
+	DisplayName string            `json:"display_name"`
+	Description string            `json:"description"`
 	Types       []model.ModelType `json:"types"`
 }

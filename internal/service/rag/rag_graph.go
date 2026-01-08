@@ -7,12 +7,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ashwinyue/next-ai/internal/service/query"
+	"github.com/ashwinyue/next-ai/internal/service/rerank"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/retriever"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-ai/internal/service/query"
-	"github.com/ashwinyue/next-ai/internal/service/rerank"
 )
 
 // ========== RAG 状态 ==========
@@ -85,14 +85,13 @@ type Config struct {
 
 // RAG 基于 Eino Graph 的 RAG 编排器
 type RAG struct {
-	graph   compose.Runnable[string, *State]
-	config  *Config
+	graph    compose.Runnable[string, *State]
+	config   *Config
 	rewriter *query.Rewriter
 	expander *query.Expander
 }
 
 // New 创建 RAG Graph
-// 使用简单的 newXXX() 函数，不使用工厂模式
 func New(ctx context.Context, cfg *Config) (*RAG, error) {
 	if cfg.ChatModel == nil {
 		return nil, fmt.Errorf("chat model is required")
@@ -229,7 +228,10 @@ func (r *RAG) processQuery(ctx context.Context, state *State) (*State, error) {
 
 // processRetrieve 处理检索
 func (r *RAG) processRetrieve(ctx context.Context, state *State) (*State, error) {
-	queries := state.OptimizedQuery.GetQueries()
+	var queries []string
+	if state.OptimizedQuery != nil {
+		queries = state.OptimizedQuery.GetQueries()
+	}
 	if len(queries) == 0 {
 		queries = []string{state.Query}
 	}
@@ -318,8 +320,8 @@ type Builder struct {
 func NewBuilder(chatModel model.ChatModel, retriever retriever.Retriever) *Builder {
 	return &Builder{
 		cfg: &Config{
-			ChatModel: chatModel,
-			Retriever: retriever,
+			ChatModel:   chatModel,
+			Retriever:   retriever,
 			NumVariants: 3,
 		},
 	}

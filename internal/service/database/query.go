@@ -8,9 +8,9 @@ import (
 	"regexp"
 	"strings"
 
-	pg_query "github.com/pganalyze/pg_query_go/v6"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
+	pg_query "github.com/pganalyze/pg_query_go/v6"
 	"gorm.io/gorm"
 )
 
@@ -50,7 +50,7 @@ func NewSQLSecurityValidator(tenantID string) *SQLSecurityValidator {
 			// 工具表
 			"tools": true,
 			// FAQ 表
-			"faqs":      true,
+			"faqs":        true,
 			"faq_entries": true,
 			// 模型表
 			"models": true,

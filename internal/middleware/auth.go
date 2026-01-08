@@ -22,6 +22,10 @@ func AuthMiddleware(svc *service.Services) gin.HandlerFunc {
 				// Token 有效，设置用户到上下文
 				c.Set("user", user)
 				c.Set("user_id", user.ID)
+				// 设置租户 ID 到上下文
+				if user.TenantID != "" {
+					c.Set("tenant_id", user.TenantID)
+				}
 				c.Next()
 				return
 			}
@@ -77,6 +81,10 @@ func RequireAuth(svc *service.Services) gin.HandlerFunc {
 		// Token 有效，设置用户到上下文
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
+		// 设置租户 ID 到上下文
+		if user.TenantID != "" {
+			c.Set("tenant_id", user.TenantID)
+		}
 		c.Next()
 	}
 }
@@ -99,4 +107,14 @@ func GetUserID(c *gin.Context) (string, bool) {
 	}
 	id, ok := userID.(string)
 	return id, ok
+}
+
+// GetTenantID 从上下文获取当前租户ID
+func GetTenantID(c *gin.Context) string {
+	if tenantID, exists := c.Get("tenant_id"); exists {
+		if id, ok := tenantID.(string); ok {
+			return id
+		}
+	}
+	return ""
 }

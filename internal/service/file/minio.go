@@ -104,3 +104,21 @@ func (s *MinIOStorage) Delete(ctx context.Context, filePath string) error {
 func (s *MinIOStorage) GetURL(filePath string) string {
 	return fmt.Sprintf("%s/%s/%s", s.urlPrefix, s.bucketName, filePath)
 }
+
+// ListBuckets 列出所有 buckets
+func (s *MinIOStorage) ListBuckets(ctx context.Context) ([]map[string]interface{}, error) {
+	buckets, err := s.client.ListBuckets(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list buckets: %w", err)
+	}
+
+	result := make([]map[string]interface{}, 0, len(buckets))
+	for _, bucket := range buckets {
+		result = append(result, map[string]interface{}{
+			"name":          bucket.Name,
+			"creation_date": bucket.CreationDate,
+		})
+	}
+
+	return result, nil
+}

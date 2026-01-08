@@ -12,14 +12,14 @@ import (
 
 // Tenant 租户
 type Tenant struct {
-	ID             string             `json:"id" gorm:"type:varchar(36);primaryKey"`
-	Name           string             `json:"name" gorm:"type:varchar(255);not null"`
-	Description    string             `json:"description" gorm:"type:text"`
-	APIKey         string             `json:"api_key" gorm:"type:varchar(255);uniqueIndex"`
-	Status         string             `json:"status" gorm:"type:varchar(50);default:'active'"`
-	Business       string             `json:"business" gorm:"type:varchar(255)"`
-	StorageQuota   int64              `json:"storage_quota" gorm:"default:10737418240"` // 10GB
-	StorageUsed    int64              `json:"storage_used" gorm:"default:0"`
+	ID           string `json:"id" gorm:"type:varchar(36);primaryKey"`
+	Name         string `json:"name" gorm:"type:varchar(255);not null"`
+	Description  string `json:"description" gorm:"type:text"`
+	APIKey       string `json:"api_key" gorm:"type:varchar(255);uniqueIndex"`
+	Status       string `json:"status" gorm:"type:varchar(50);default:'active'"`
+	Business     string `json:"business" gorm:"type:varchar(255)"`
+	StorageQuota int64  `json:"storage_quota" gorm:"default:10737418240"` // 10GB
+	StorageUsed  int64  `json:"storage_used" gorm:"default:0"`
 
 	// 配置字段（JSON）
 	AgentConfig        *AgentConfig        `json:"agent_config,omitempty" gorm:"type:jsonb"`
@@ -67,7 +67,7 @@ type ContextConfig struct {
 
 // WebSearchConfig 网络搜索配置
 type WebSearchConfig struct {
-	Enabled   bool   `json:"enabled"`
+	Enabled    bool   `json:"enabled"`
 	MaxResults int    `json:"max_results"`
 	Provider   string `json:"provider"`
 }

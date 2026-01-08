@@ -67,17 +67,17 @@ type LoginRequest struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	Success      bool         `json:"success"`
-	Message      string       `json:"message,omitempty"`
-	User         *model.User   `json:"user,omitempty"`
-	Token        string       `json:"token,omitempty"`
-	RefreshToken string       `json:"refresh_token,omitempty"`
+	Success      bool        `json:"success"`
+	Message      string      `json:"message,omitempty"`
+	User         *model.User `json:"user,omitempty"`
+	Token        string      `json:"token,omitempty"`
+	RefreshToken string      `json:"refresh_token,omitempty"`
 }
 
 // RegisterResponse 注册响应
 type RegisterResponse struct {
-	Success bool       `json:"success"`
-	Message string     `json:"message,omitempty"`
+	Success bool        `json:"success"`
+	Message string      `json:"message,omitempty"`
 	User    *model.User `json:"user,omitempty"`
 }
 

@@ -4,26 +4,23 @@
 package knowledge
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"time"
 
+	"github.com/ashwinyue/next-ai/internal/config"
+	"github.com/ashwinyue/next-ai/internal/model"
+	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/cloudwego/eino-ext/components/document/parser/docx"
+	"github.com/cloudwego/eino-ext/components/document/parser/html"
 	"github.com/cloudwego/eino-ext/components/document/parser/pdf"
 	"github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive"
 	einoparser "github.com/cloudwego/eino/components/document/parser"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/schema"
-	"github.com/ashwinyue/next-ai/internal/config"
-	"github.com/ashwinyue/next-ai/internal/model"
-	"github.com/ashwinyue/next-ai/internal/repository"
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/google/uuid"
 )
 
@@ -172,6 +169,12 @@ func (p *DocumentProcessor) newParser(ctx context.Context, filePath string) (ein
 			IncludeFooters:  false,
 			IncludeTables:   true,
 		})
+	case ".html", ".htm":
+		// 使用 body 选择器提取正文内容
+		bodySelector := "body"
+		return html.NewParser(ctx, &html.Config{
+			Selector: &bodySelector,
+		})
 	case ".txt", ".md":
 		return &textParser{}, nil
 	default:
@@ -265,16 +268,17 @@ func (p *DocumentProcessor) embedChunks(ctx context.Context, chunks []*model.Doc
 	return vectors, nil
 }
 
-// indexChunks 索引文档块
+// indexChunks 索引文档块（使用 Eino ES8 Indexer）
 func (p *DocumentProcessor) indexChunks(ctx context.Context, kb *model.KnowledgeBase, doc *model.Document, chunks []*model.DocumentChunk, vectors [][]float64) error {
-	esClient, err := newES8Client(p.cfg)
+	// 创建 Eino ES8 Indexer
+	indexer, err := NewES8Indexer(ctx, p.cfg, p.embedder)
 	if err != nil {
-		return fmt.Errorf("failed to create ES client: %w", err)
+		return fmt.Errorf("failed to create ES8 indexer: %w", err)
 	}
+	defer indexer.Close()
 
-	indexName := p.cfg.Elastic.IndexPrefix + "_chunks"
-
-	if err := ensureIndex(ctx, esClient, indexName, p.cfg.AI.Embedding.Dimensions); err != nil {
+	// 确保索引存在
+	if err := indexer.EnsureIndex(ctx); err != nil {
 		return fmt.Errorf("failed to ensure index: %w", err)
 	}
 
@@ -283,52 +287,14 @@ func (p *DocumentProcessor) indexChunks(ctx context.Context, kb *model.Knowledge
 		return fmt.Errorf("failed to save chunks to database: %w", err)
 	}
 
-	// 索引到 ES
-	for i, chunk := range chunks {
-		metadata := make(map[string]interface{})
-		if chunk.Metadata != nil {
-			for k, v := range chunk.Metadata {
-				metadata[k] = v
-			}
-		}
-
-		docData := map[string]interface{}{
-			"content":      chunk.Content,
-			"document_id":  doc.ID,
-			"chunk_index":  chunk.ChunkIndex,
-			"knowledge_base_id": kb.ID,
-			"metadata":     metadata,
-		}
-
-		if i < len(vectors) && len(vectors[i]) > 0 {
-			docData["content_vector"] = vectors[i]
-		}
-
-		// 使用 ES Index API
-		data, err := json.Marshal(docData)
-		if err != nil {
-			log.Printf("Warning: failed to marshal chunk data: %v", err)
-			continue
-		}
-
-		req := esapi.IndexRequest{
-			Index:      indexName,
-			DocumentID: chunk.ID,
-			Body:       bytes.NewReader(data),
-		}
-
-		res, err := req.Do(ctx, esClient)
-		if err != nil {
-			log.Printf("Warning: failed to index chunk %s: %v", chunk.ID, err)
-			continue
-		}
-		res.Body.Close()
-
-		if res.IsError() {
-			log.Printf("Warning: ES error indexing chunk %s: %s", chunk.ID, res.String())
-		}
+	// 转换为 Eino Document 并索引
+	einoDocs := ChunksToEinoDocuments(chunks)
+	ids, err := indexer.Store(ctx, einoDocs)
+	if err != nil {
+		return fmt.Errorf("failed to store documents: %w", err)
 	}
 
+	log.Printf("Indexed %d chunks to ES", len(ids))
 	return nil
 }
 
@@ -342,99 +308,13 @@ func getFileExt(filePath string) string {
 	return ""
 }
 
-func newES8Client(cfg *config.Config) (*elasticsearch.Client, error) {
-	return elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{cfg.Elastic.Host},
-		Username:  cfg.Elastic.Username,
-		Password:  cfg.Elastic.Password,
-	})
-}
-
-func ensureIndex(ctx context.Context, client *elasticsearch.Client, indexName string, dimensions int) error {
-	// 检查索引是否存在
-	res, err := client.Indices.Exists([]string{indexName})
-	if err != nil {
-		return fmt.Errorf("failed to check index existence: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode == 200 {
-		return nil // 索引已存在
-	}
-
-	if dimensions == 0 {
-		dimensions = 1536 // 默认 OpenAI 维度
-	}
-
-	// 创建索引映射，支持向量字段
-	mapping := map[string]interface{}{
-		"mappings": map[string]interface{}{
-			"properties": map[string]interface{}{
-				"content": map[string]interface{}{
-					"type": "text",
-				},
-				"content_vector": map[string]interface{}{
-					"type":      "dense_vector",
-					"dims":      dimensions,
-					"index":     true,
-					"similarity": "cosine",
-				},
-				"document_id": map[string]interface{}{
-					"type": "keyword",
-				},
-				"chunk_index": map[string]interface{}{
-					"type": "integer",
-				},
-				"knowledge_base_id": map[string]interface{}{
-					"type": "keyword",
-				},
-				"metadata": map[string]interface{}{
-					"type": "object",
-				},
-			},
-		},
-		"settings": map[string]interface{}{
-			"number_of_shards":   1,
-			"number_of_replicas": 0,
-		},
-	}
-
-	mappingData, err := json.Marshal(mapping)
-	if err != nil {
-		return fmt.Errorf("failed to marshal mapping: %w", err)
-	}
-
-	req := esapi.IndicesCreateRequest{
-		Index: indexName,
-		Body:  bytes.NewReader(mappingData),
-	}
-
-	res, err = req.Do(ctx, client)
-	if err != nil {
-		return fmt.Errorf("failed to create index: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return fmt.Errorf("failed to create index: %s", res.String())
-	}
-
-	log.Printf("Index %s created with %d dimensions", indexName, dimensions)
-	return nil
-}
-
-// CreateChunkIndex 创建文档块索引
-func CreateChunkIndex(ctx context.Context, cfg *config.Config) error {
-	client, err := newES8Client(cfg)
+// CreateChunkIndex 创建文档块索引（使用 Eino ES8 Indexer）
+func CreateChunkIndex(ctx context.Context, cfg *config.Config, embedder embedding.Embedder) error {
+	indexer, err := NewES8Indexer(ctx, cfg, embedder)
 	if err != nil {
 		return err
 	}
+	defer indexer.Close()
 
-	indexName := cfg.Elastic.IndexPrefix + "_chunks"
-	dimensions := cfg.AI.Embedding.Dimensions
-	if dimensions == 0 {
-		dimensions = 1536
-	}
-
-	return ensureIndex(ctx, client, indexName, dimensions)
+	return indexer.EnsureIndex(ctx)
 }

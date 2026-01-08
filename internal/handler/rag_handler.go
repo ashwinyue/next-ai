@@ -36,7 +36,6 @@ func (h *RAGHandler) Retrieve(c *gin.Context) {
 	ragSvc := rag.NewService(
 		h.svc.ChatModel,
 		h.svc.Retriever,
-		h.svc.Query,
 		h.svc.Rerankers,
 	)
 
@@ -67,7 +66,6 @@ func (h *RAGHandler) RetrieveSimple(c *gin.Context) {
 	ragSvc := rag.NewService(
 		h.svc.ChatModel,
 		h.svc.Retriever,
-		h.svc.Query,
 		h.svc.Rerankers,
 	)
 

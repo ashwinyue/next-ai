@@ -41,6 +41,17 @@ func (r *DatasetRepository) List(tenantID string, offset, limit int) ([]*model.D
 	return datasets, err
 }
 
+// Count 统计数据集总数
+func (r *DatasetRepository) Count(tenantID string) (int64, error) {
+	var count int64
+	query := r.db.Model(&model.Dataset{})
+	if tenantID != "" {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.Count(&count).Error
+	return count, err
+}
+
 // Update 更新数据集
 func (r *DatasetRepository) Update(dataset *model.Dataset) error {
 	return r.db.Save(dataset).Error

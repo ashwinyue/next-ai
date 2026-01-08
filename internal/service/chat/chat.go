@@ -319,3 +319,212 @@ func truncateMessage(s string, maxLen int) string {
 	}
 	return s[:maxLen] + "..."
 }
+
+// ========== Agent 聊天集成 ==========
+
+// AgentService Agent 服务接口
+// 使用 any 类型避免循环依赖
+type AgentService interface {
+	StreamWithContext(ctx context.Context, agentID string, req interface{}) (<-chan interface{}, error)
+}
+
+// ServiceWithAgent 带 Agent 集成的聊天服务
+// 注意：这里使用接口避免循环依赖，实际注入时传入 agent.Service
+type ServiceWithAgent struct {
+	*Service
+	agentSvc  AgentService
+	retriever RetrieverProvider // 检索器提供者
+}
+
+// RetrieverProvider 检索器提供者接口
+type RetrieverProvider interface {
+	GetRetriever(ctx context.Context, knowledgeBaseIDs []string, tenantID string) (interface{}, error)
+}
+
+// NewServiceWithAgent 创建带 Agent 集成的聊天服务
+func NewServiceWithAgent(chatSvc *Service, agentSvc AgentService, retriever RetrieverProvider) *ServiceWithAgent {
+	return &ServiceWithAgent{
+		Service:   chatSvc,
+		agentSvc:  agentSvc,
+		retriever: retriever,
+	}
+}
+
+// StreamEvent 流式事件
+type StreamEvent struct {
+	Type     string `json:"type"` // start, message, tool_call, error, end
+	Data     string `json:"data"`
+	ToolName string `json:"tool_name,omitempty"`
+}
+
+// AgentChatRequest Agent 聊天请求
+type AgentChatRequest struct {
+	SessionID        string   `json:"session_id"`
+	AgentID          string   `json:"agent_id"`
+	Query            string   `json:"query"`
+	KnowledgeBaseIDs []string `json:"knowledge_base_ids,omitempty"`
+	TenantID         string   `json:"tenant_id,omitempty"`
+}
+
+// AgentChat 调用 Agent 进行聊天（流式）
+// 兼容 WeKnora API: POST /api/v1/agent-chat/:session_id
+func (s *ServiceWithAgent) AgentChat(ctx context.Context, req *AgentChatRequest) (<-chan StreamEvent, error) {
+	// 验证会话是否存在
+	session, err := s.Service.GetSession(ctx, req.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("session not found: %w", err)
+	}
+
+	// 使用会话的 Agent ID（如果请求未指定）
+	agentID := req.AgentID
+	if agentID == "" && session.AgentID != "" {
+		agentID = session.AgentID
+	}
+
+	// 构建运行时请求
+	runReq := map[string]interface{}{
+		"query":              req.Query,
+		"session_id":         req.SessionID,
+		"knowledge_base_ids": req.KnowledgeBaseIDs,
+		"tenant_id":          req.TenantID,
+	}
+
+	// 调用 Agent 流式执行
+	rawCh, err := s.agentSvc.StreamWithContext(ctx, agentID, runReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stream agent: %w", err)
+	}
+
+	// 转换事件格式
+	outCh := make(chan StreamEvent, 10)
+	go func() {
+		defer close(outCh)
+		for evt := range rawCh {
+			switch v := evt.(type) {
+			case map[string]interface{}:
+				evtType, _ := v["type"].(string)
+				data, _ := v["data"].(string)
+				toolName, _ := v["tool_name"].(string)
+				outCh <- StreamEvent{
+					Type:     evtType,
+					Data:     data,
+					ToolName: toolName,
+				}
+			case StreamEvent:
+				outCh <- v
+			}
+		}
+	}()
+
+	return outCh, nil
+}
+
+// KnowledgeChatRequest 知识库聊天请求
+type KnowledgeChatRequest struct {
+	SessionID        string   `json:"session_id"`
+	Query            string   `json:"query"`
+	KnowledgeBaseIDs []string `json:"knowledge_base_ids"`
+	TenantID         string   `json:"tenant_id,omitempty"`
+}
+
+// KnowledgeChat 知识库聊天（使用默认 Agent）
+// 兼容 WeKnora API: POST /api/v1/knowledge-chat/:session_id
+func (s *ServiceWithAgent) KnowledgeChat(ctx context.Context, req *KnowledgeChatRequest) (<-chan StreamEvent, error) {
+	// 使用快速问答内置 Agent
+	agentID := "builtin-quick-answer"
+
+	// 调用 AgentChat
+	return s.AgentChat(ctx, &AgentChatRequest{
+		SessionID:        req.SessionID,
+		AgentID:          agentID,
+		Query:            req.Query,
+		KnowledgeBaseIDs: req.KnowledgeBaseIDs,
+		TenantID:         req.TenantID,
+	})
+}
+
+// KnowledgeSearchRequest 知识库搜索请求
+type KnowledgeSearchRequest struct {
+	Query            string   `json:"query"`
+	KnowledgeBaseIDs []string `json:"knowledge_base_ids"`
+	TopK             int      `json:"top_k,omitempty"`
+}
+
+// KnowledgeSearchResult 知识库搜索结果
+type KnowledgeSearchResult struct {
+	Query   string                   `json:"query"`
+	Results []map[string]interface{} `json:"results"`
+	Total   int                      `json:"total"`
+}
+
+// KnowledgeSearch 知识库搜索（独立接口，不调用 Agent）
+// 兼容 WeKnora API: POST /api/v1/knowledge-search
+func (s *ServiceWithAgent) KnowledgeSearch(ctx context.Context, req *KnowledgeSearchRequest) (*KnowledgeSearchResult, error) {
+	if req.Query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+
+	if req.TopK <= 0 {
+		req.TopK = 10
+	}
+
+	// 获取 Retriever
+	if s.retriever == nil {
+		return &KnowledgeSearchResult{
+			Query:   req.Query,
+			Results: []map[string]interface{}{},
+			Total:   0,
+		}, nil
+	}
+
+	retrieverIntf, err := s.retriever.GetRetriever(ctx, req.KnowledgeBaseIDs, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get retriever: %w", err)
+	}
+
+	// 使用通用接口执行检索
+	docs, err := retrieveWithInterface(ctx, retrieverIntf, req.Query, req.TopK)
+	if err != nil {
+		return &KnowledgeSearchResult{
+			Query:   req.Query,
+			Results: []map[string]interface{}{},
+			Total:   0,
+		}, nil
+	}
+
+	// 转换结果
+	results := make([]map[string]interface{}, 0, len(docs))
+	for _, doc := range docs {
+		result := map[string]interface{}{
+			"content": doc.Content,
+			"id":      doc.ID,
+		}
+		if score, ok := doc.MetaData["_score"].(float64); ok {
+			result["score"] = score
+		}
+		if title, ok := doc.MetaData["title"].(string); ok {
+			result["title"] = title
+		}
+		results = append(results, result)
+	}
+
+	return &KnowledgeSearchResult{
+		Query:   req.Query,
+		Results: results,
+		Total:   len(results),
+	}, nil
+}
+
+// retrieveWithInterface 使用通用接口执行检索
+func retrieveWithInterface(ctx context.Context, retrieverIntf interface{}, query string, topK int) ([]*schema.Document, error) {
+	// 尝试转换为 retriever.Retriever 接口
+	type retrieverAdapter interface {
+		Retrieve(ctx context.Context, query string, opts ...interface{}) ([]*schema.Document, error)
+	}
+
+	if r, ok := retrieverIntf.(retrieverAdapter); ok {
+		return r.Retrieve(ctx, query)
+	}
+
+	return []*schema.Document{}, fmt.Errorf("retriever not supported")
+}
