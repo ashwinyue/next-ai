@@ -4,18 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/ashwinyue/next-ai/internal/config"
 	"github.com/ashwinyue/next-ai/internal/repository"
 	"github.com/ashwinyue/next-ai/internal/service/file"
-	"github.com/cloudwego/eino-ext/components/embedding/dashscope"
 	"github.com/cloudwego/eino-ext/components/model/openai"
-	"github.com/cloudwego/eino-ext/components/retriever/es8"
-	"github.com/cloudwego/eino-ext/components/retriever/es8/search_mode"
-	einoembed "github.com/cloudwego/eino/components/embedding"
 	ecomodel "github.com/cloudwego/eino/components/model"
-	"github.com/elastic/go-elasticsearch/v8"
 )
 
 // newChatModel 创建 ChatModel
@@ -95,95 +89,6 @@ func newToolCallingChatModel(ctx context.Context, cfg *config.Config) (ecomodel.
 		Model:       modelName,
 		Temperature: &temperature,
 	})
-}
-
-// newEmbedder 创建 Embedding 器
-func newEmbedder(ctx context.Context, cfg *config.Config) einoembed.Embedder {
-	embCfg := cfg.AI.Embedding
-
-	var apiKey, model string
-	var timeout int
-
-	switch embCfg.Provider {
-	case "alibaba", "qwen", "dashscope", "":
-		apiKey = embCfg.APIKey
-		model = embCfg.Model
-		timeout = embCfg.Timeout
-	case "openai":
-		apiKey = embCfg.APIKey
-		model = embCfg.Model
-		timeout = embCfg.Timeout
-	default:
-		log.Printf("Warning: unsupported embedding provider: %s", embCfg.Provider)
-		return nil
-	}
-
-	if apiKey == "" {
-		log.Printf("Warning: embedding api_key is empty")
-		return nil
-	}
-
-	if model == "" {
-		model = "text-embedding-v3"
-	}
-
-	embConfig := &dashscope.EmbeddingConfig{
-		APIKey: apiKey,
-		Model:  model,
-	}
-
-	if timeout > 0 {
-		embConfig.Timeout = time.Duration(timeout) * time.Second
-	}
-
-	if embCfg.Dimensions > 0 {
-		embConfig.Dimensions = &embCfg.Dimensions
-	}
-
-	embedder, err := dashscope.NewEmbedder(ctx, embConfig)
-	if err != nil {
-		log.Printf("Warning: failed to create embedder: %v", err)
-		return nil
-	}
-
-	return embedder
-}
-
-// newES8Retriever 创建 ES8 检索器
-// 返回 retriever, esClient, indexName
-func newES8Retriever(ctx context.Context, cfg *config.Config, embedder einoembed.Embedder) (*es8.Retriever, *elasticsearch.Client, string) {
-	esCfg := cfg.Elastic
-
-	if esCfg.Host == "" {
-		log.Printf("Warning: elasticsearch host not configured")
-		return nil, nil, ""
-	}
-
-	esClient, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{esCfg.Host},
-		Username:  esCfg.Username,
-		Password:  esCfg.Password,
-	})
-	if err != nil {
-		log.Printf("Warning: failed to create es client: %v", err)
-		return nil, nil, ""
-	}
-
-	indexName := esCfg.IndexPrefix + "_chunks"
-
-	retriever, err := es8.NewRetriever(ctx, &es8.RetrieverConfig{
-		Client:     esClient,
-		Index:      indexName,
-		TopK:       10,
-		SearchMode: search_mode.SearchModeDenseVectorSimilarity(search_mode.DenseVectorSimilarityTypeCosineSimilarity, "content_vector"),
-		Embedding:  embedder,
-	})
-	if err != nil {
-		log.Printf("Warning: failed to create retriever: %v", err)
-		return nil, esClient, indexName
-	}
-
-	return retriever, esClient, indexName
 }
 
 // newFileService 创建文件存储服务

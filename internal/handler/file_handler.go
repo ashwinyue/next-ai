@@ -26,18 +26,16 @@ func NewFileHandler(fileSvc *filesvc.Service) *FileHandler {
 // @Tags         文件管理
 // @Accept       multipart/form-data
 // @Produce      json
-// @Param        tenant_id    formData string  true "租户ID"
-// @Param        knowledge_id formData string  true "知识库ID"
-// @Param        file         formData file    true "文件"
-// @Success      200          {object}  Response  "上传成功"
-// @Failure      500          {object}  Response  "服务器错误"
+// @Param        tenant_id formData string true "租户ID"
+// @Param        file      formData file   true "文件"
+// @Success      200        {object}  Response  "上传成功"
+// @Failure      500        {object}  Response  "服务器错误"
 // @Router       /files/upload [post]
 func (h *FileHandler) UploadFile(c *gin.Context) {
 	tenantID := c.PostForm("tenant_id")
-	knowledgeID := c.PostForm("knowledge_id")
 
-	if tenantID == "" || knowledgeID == "" {
-		BadRequest(c, "tenant_id and knowledge_id are required")
+	if tenantID == "" {
+		BadRequest(c, "tenant_id is required")
 		return
 	}
 
@@ -62,7 +60,6 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 		Size:        fileHeader.Size,
 		Reader:      f,
 		TenantID:    tenantID,
-		KnowledgeID: knowledgeID,
 	})
 	if err != nil {
 		Error(c, err)
@@ -146,26 +143,4 @@ func (h *FileHandler) DeleteFile(c *gin.Context) {
 	}
 
 	Success(c, gin.H{"message": "File deleted successfully"})
-}
-
-// ListFilesByKnowledge 列出知识库的文件
-// @Summary      列出知识库文件
-// @Description  列出指定知识库的所有文件
-// @Tags         文件管理
-// @Accept       json
-// @Produce      json
-// @Param        knowledge_id path      string  true "知识库ID"
-// @Success      200          {object}  Response  "文件列表"
-// @Failure      500          {object}  Response  "服务器错误"
-// @Router       /files/knowledge/{knowledge_id} [get]
-func (h *FileHandler) ListFilesByKnowledge(c *gin.Context) {
-	knowledgeID := c.Param("knowledge_id")
-
-	files, err := h.fileSvc.ListByKnowledgeID(c.Request.Context(), knowledgeID)
-	if err != nil {
-		Error(c, err)
-		return
-	}
-
-	Success(c, gin.H{"files": files, "total": len(files)})
 }

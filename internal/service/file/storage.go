@@ -24,7 +24,6 @@ type SaveRequest struct {
 	Size        int64
 	Reader      io.Reader
 	TenantID    string
-	KnowledgeID string
 }
 
 // StorageType 存储类型

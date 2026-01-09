@@ -5,34 +5,23 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/lib/pq"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
 // Agent 模式常量
 const (
-	AgentModeQuickAnswer    = "quick-answer"    // RAG 快速问答模式
 	AgentModeSmartReasoning = "smart-reasoning" // ReAct 多步推理模式
 )
 
 // 内置 Agent ID 常量
 const (
-	BuiltinQuickAnswerID          = "builtin-quick-answer"
-	BuiltinSmartReasoningID       = "builtin-smart-reasoning"
-	BuiltinDeepResearcherID       = "builtin-deep-researcher"
-	BuiltinDataAnalystID          = "builtin-data-analyst"
-	BuiltinKnowledgeGraphExpertID = "builtin-knowledge-graph-expert"
-	BuiltinDocumentAssistantID    = "builtin-document-assistant"
+	BuiltinSmartReasoningID = "builtin-smart-reasoning"
 )
 
 // 内置 Agent ID 列表
 var BuiltinAgentIDs = []string{
-	BuiltinQuickAnswerID,
 	BuiltinSmartReasoningID,
-	BuiltinDeepResearcherID,
-	BuiltinDataAnalystID,
-	BuiltinKnowledgeGraphExpertID,
-	BuiltinDocumentAssistantID,
 }
 
 // IsBuiltinAgentID 检查是否是内置 Agent ID
@@ -59,17 +48,16 @@ type Agent struct {
 	ID           string         `gorm:"primaryKey;type:varchar(36)" json:"id"`
 	Name         string         `gorm:"size:255;not null;uniqueIndex" json:"name"`
 	Description  string         `gorm:"type:text" json:"description"`
-	Avatar       string         `gorm:"size:64" json:"avatar,omitempty"`                // 头像/图标
-	IsBuiltin    bool           `gorm:"default:false" json:"is_builtin"`                // 是否内置 Agent
-	AgentMode    string         `gorm:"size:32;default:quick-answer" json:"agent_mode"` // Agent 模式
+	Avatar       string         `gorm:"size:64" json:"avatar,omitempty"`                   // 头像/图标
+	IsBuiltin    bool           `gorm:"default:false" json:"is_builtin"`                   // 是否内置 Agent
+	AgentMode    string         `gorm:"size:32;default:smart-reasoning" json:"agent_mode"` // Agent 模式
 	SystemPrompt string         `gorm:"type:text" json:"system_prompt"`
 	ModelConfig  ModelConfig    `gorm:"type:jsonb;serializer:json" json:"model_config"`
-	Tools        JSON           `gorm:"type:jsonb" json:"tools"`
+	Tools        datatypes.JSON `gorm:"type:jsonb" json:"tools"`
 	MaxIter      int            `gorm:"default:10" json:"max_iterations"`
-	Temperature  float64        `gorm:"default:0.7" json:"temperature"`          // 温度参数
-	KnowledgeIDs pq.StringArray `gorm:"type:varchar(36)[]" json:"knowledge_ids"` // 关联的知识库 ID
+	Temperature  float64        `gorm:"default:0.7" json:"temperature"` // 温度参数
 	IsActive     bool           `gorm:"index;default:true" json:"is_active"`
-	Metadata     JSON           `gorm:"type:jsonb" json:"metadata"`
+	Metadata     datatypes.JSON `gorm:"type:jsonb" json:"metadata"`
 	CreatedAt    time.Time      `json:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`

@@ -332,21 +332,14 @@ type AgentService interface {
 // 注意：这里使用接口避免循环依赖，实际注入时传入 agent.Service
 type ServiceWithAgent struct {
 	*Service
-	agentSvc  AgentService
-	retriever RetrieverProvider // 检索器提供者
-}
-
-// RetrieverProvider 检索器提供者接口
-type RetrieverProvider interface {
-	GetRetriever(ctx context.Context, knowledgeBaseIDs []string, tenantID string) (interface{}, error)
+	agentSvc AgentService
 }
 
 // NewServiceWithAgent 创建带 Agent 集成的聊天服务
-func NewServiceWithAgent(chatSvc *Service, agentSvc AgentService, retriever RetrieverProvider) *ServiceWithAgent {
+func NewServiceWithAgent(chatSvc *Service, agentSvc AgentService) *ServiceWithAgent {
 	return &ServiceWithAgent{
-		Service:   chatSvc,
-		agentSvc:  agentSvc,
-		retriever: retriever,
+		Service:  chatSvc,
+		agentSvc: agentSvc,
 	}
 }
 
@@ -359,11 +352,9 @@ type StreamEvent struct {
 
 // AgentChatRequest Agent 聊天请求
 type AgentChatRequest struct {
-	SessionID        string   `json:"session_id"`
-	AgentID          string   `json:"agent_id"`
-	Query            string   `json:"query"`
-	KnowledgeBaseIDs []string `json:"knowledge_base_ids,omitempty"`
-	TenantID         string   `json:"tenant_id,omitempty"`
+	SessionID string `json:"session_id"`
+	AgentID   string `json:"agent_id"`
+	Query     string `json:"query"`
 }
 
 // AgentChat 调用 Agent 进行聊天（流式）
@@ -383,10 +374,8 @@ func (s *ServiceWithAgent) AgentChat(ctx context.Context, req *AgentChatRequest)
 
 	// 构建运行时请求
 	runReq := map[string]interface{}{
-		"query":              req.Query,
-		"session_id":         req.SessionID,
-		"knowledge_base_ids": req.KnowledgeBaseIDs,
-		"tenant_id":          req.TenantID,
+		"query":      req.Query,
+		"session_id": req.SessionID,
 	}
 
 	// 调用 Agent 流式执行
@@ -417,114 +406,4 @@ func (s *ServiceWithAgent) AgentChat(ctx context.Context, req *AgentChatRequest)
 	}()
 
 	return outCh, nil
-}
-
-// KnowledgeChatRequest 知识库聊天请求
-type KnowledgeChatRequest struct {
-	SessionID        string   `json:"session_id"`
-	Query            string   `json:"query"`
-	KnowledgeBaseIDs []string `json:"knowledge_base_ids"`
-	TenantID         string   `json:"tenant_id,omitempty"`
-}
-
-// KnowledgeChat 知识库聊天（使用默认 Agent）
-// 兼容 WeKnora API: POST /api/v1/knowledge-chat/:session_id
-func (s *ServiceWithAgent) KnowledgeChat(ctx context.Context, req *KnowledgeChatRequest) (<-chan StreamEvent, error) {
-	// 使用快速问答内置 Agent
-	agentID := "builtin-quick-answer"
-
-	// 调用 AgentChat
-	return s.AgentChat(ctx, &AgentChatRequest{
-		SessionID:        req.SessionID,
-		AgentID:          agentID,
-		Query:            req.Query,
-		KnowledgeBaseIDs: req.KnowledgeBaseIDs,
-		TenantID:         req.TenantID,
-	})
-}
-
-// KnowledgeSearchRequest 知识库搜索请求
-type KnowledgeSearchRequest struct {
-	Query            string   `json:"query"`
-	KnowledgeBaseIDs []string `json:"knowledge_base_ids"`
-	TopK             int      `json:"top_k,omitempty"`
-}
-
-// KnowledgeSearchResult 知识库搜索结果
-type KnowledgeSearchResult struct {
-	Query   string                   `json:"query"`
-	Results []map[string]interface{} `json:"results"`
-	Total   int                      `json:"total"`
-}
-
-// KnowledgeSearch 知识库搜索（独立接口，不调用 Agent）
-// 兼容 WeKnora API: POST /api/v1/knowledge-search
-func (s *ServiceWithAgent) KnowledgeSearch(ctx context.Context, req *KnowledgeSearchRequest) (*KnowledgeSearchResult, error) {
-	if req.Query == "" {
-		return nil, fmt.Errorf("query is required")
-	}
-
-	if req.TopK <= 0 {
-		req.TopK = 10
-	}
-
-	// 获取 Retriever
-	if s.retriever == nil {
-		return &KnowledgeSearchResult{
-			Query:   req.Query,
-			Results: []map[string]interface{}{},
-			Total:   0,
-		}, nil
-	}
-
-	retrieverIntf, err := s.retriever.GetRetriever(ctx, req.KnowledgeBaseIDs, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get retriever: %w", err)
-	}
-
-	// 使用通用接口执行检索
-	docs, err := retrieveWithInterface(ctx, retrieverIntf, req.Query, req.TopK)
-	if err != nil {
-		return &KnowledgeSearchResult{
-			Query:   req.Query,
-			Results: []map[string]interface{}{},
-			Total:   0,
-		}, nil
-	}
-
-	// 转换结果
-	results := make([]map[string]interface{}, 0, len(docs))
-	for _, doc := range docs {
-		result := map[string]interface{}{
-			"content": doc.Content,
-			"id":      doc.ID,
-		}
-		if score, ok := doc.MetaData["_score"].(float64); ok {
-			result["score"] = score
-		}
-		if title, ok := doc.MetaData["title"].(string); ok {
-			result["title"] = title
-		}
-		results = append(results, result)
-	}
-
-	return &KnowledgeSearchResult{
-		Query:   req.Query,
-		Results: results,
-		Total:   len(results),
-	}, nil
-}
-
-// retrieveWithInterface 使用通用接口执行检索
-func retrieveWithInterface(ctx context.Context, retrieverIntf interface{}, query string, topK int) ([]*schema.Document, error) {
-	// 尝试转换为 retriever.Retriever 接口
-	type retrieverAdapter interface {
-		Retrieve(ctx context.Context, query string, opts ...interface{}) ([]*schema.Document, error)
-	}
-
-	if r, ok := retrieverIntf.(retrieverAdapter); ok {
-		return r.Retrieve(ctx, query)
-	}
-
-	return []*schema.Document{}, fmt.Errorf("retriever not supported")
 }

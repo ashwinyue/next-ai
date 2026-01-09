@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/ashwinyue/next-ai/internal/model"
 	"github.com/ashwinyue/next-ai/internal/repository"
@@ -82,7 +81,6 @@ func (s *Service) SaveFile(ctx context.Context, req *SaveFileRequest) (*model.St
 		Size:        req.Size,
 		Reader:      req.Reader,
 		TenantID:    req.TenantID,
-		KnowledgeID: req.KnowledgeID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to save file: %w", err)
@@ -92,7 +90,6 @@ func (s *Service) SaveFile(ctx context.Context, req *SaveFileRequest) (*model.St
 	storedFile := &model.StoredFile{
 		ID:          uuid.New().String(),
 		TenantID:    req.TenantID,
-		KnowledgeID: req.KnowledgeID,
 		FileName:    req.FileName,
 		FileSize:    req.Size,
 		ContentType: req.ContentType,
@@ -162,50 +159,6 @@ type SaveFileRequest struct {
 	Size        int64
 	Reader      io.Reader
 	TenantID    string
-	KnowledgeID string
-}
-
-// SaveFileFromPath 从文件路径保存文件
-func (s *Service) SaveFileFromPath(ctx context.Context, filePath, tenantID, knowledgeID string) (*model.StoredFile, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get file info: %w", err)
-	}
-
-	return s.SaveFile(ctx, &SaveFileRequest{
-		FileName:    info.Name(),
-		Size:        info.Size(),
-		Reader:      file,
-		TenantID:    tenantID,
-		KnowledgeID: knowledgeID,
-	})
-}
-
-// ListByKnowledgeID 列出知识库的所有文件
-func (s *Service) ListByKnowledgeID(ctx context.Context, knowledgeID string) ([]*model.StoredFile, error) {
-	return s.repo.File.GetByKnowledgeID(knowledgeID)
-}
-
-// DeleteByKnowledgeID 删除知识库的所有文件
-func (s *Service) DeleteByKnowledgeID(ctx context.Context, knowledgeID string) error {
-	files, err := s.repo.File.GetByKnowledgeID(knowledgeID)
-	if err != nil {
-		return err
-	}
-
-	for _, f := range files {
-		if err := s.storage.Delete(ctx, f.FilePath); err != nil {
-			return err
-		}
-	}
-
-	return s.repo.File.DeleteByKnowledgeID(knowledgeID)
 }
 
 // BucketsLister 支持 bucket 列表的存储接口
@@ -221,19 +174,4 @@ func (s *Service) ListBuckets(ctx context.Context) ([]map[string]interface{}, er
 		return []map[string]interface{}{}, nil
 	}
 	return lister.ListBuckets(ctx)
-}
-
-// DownloadKnowledge 下载知识文档文件
-func (s *Service) DownloadKnowledge(ctx context.Context, documentID string) (*model.Document, io.ReadCloser, error) {
-	doc, err := s.repo.Knowledge.GetDocumentByID(documentID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("document not found: %w", err)
-	}
-
-	reader, err := s.storage.Get(ctx, doc.FilePath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get file content: %w", err)
-	}
-
-	return doc, reader, nil
 }

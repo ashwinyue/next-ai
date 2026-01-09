@@ -63,13 +63,13 @@ func NewMinIOStorage(cfg *MinIOConfig) (*MinIOStorage, error) {
 
 // Save 保存文件到 MinIO
 func (s *MinIOStorage) Save(ctx context.Context, req *SaveRequest) (string, error) {
-	// 生成对象名: {tenantID}/{knowledgeID}/{uuid}.{ext}
+	// 生成对象名: {tenantID}/{uuid}.{ext}
 	ext := filepath.Ext(req.FileName)
 	if ext == "" {
 		ext = extensionByContentType(req.ContentType)
 	}
 	fileID := uuid.New().String()
-	objectName := fmt.Sprintf("%s/%s/%s%s", req.TenantID, req.KnowledgeID, fileID, ext)
+	objectName := fmt.Sprintf("%s/%s%s", req.TenantID, fileID, ext)
 
 	// 上传文件
 	_, err := s.client.PutObject(ctx, s.bucketName, objectName, req.Reader, req.Size, minio.PutObjectOptions{

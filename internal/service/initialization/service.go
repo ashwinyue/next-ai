@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/ashwinyue/next-ai/internal/repository"
+	"github.com/cloudwego/eino-ext/components/embedding/ollama"
+	"github.com/cloudwego/eino-ext/components/embedding/openai"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
-	"github.com/cloudwego/eino-ext/components/embedding/ollama"
-	"github.com/cloudwego/eino-ext/components/embedding/openai"
 )
 
 // Service 初始化服务
@@ -124,93 +124,6 @@ func (s *Service) getOllamaVersion(ctx context.Context, baseURL string) (string,
 	}
 
 	return "unknown", nil // Ollama API 返回的格式可能不同
-}
-
-// UpdateKBConfigRequest 更新知识库配置请求
-type UpdateKBConfigRequest struct {
-	ChunkSize    int      `json:"chunkSize"`
-	ChunkOverlap int      `json:"chunkOverlap"`
-	Separators   []string `json:"separators"`
-	EnableQA     bool     `json:"enableQA"`
-	QAPrompt     string   `json:"qaPrompt"`
-}
-
-// UpdateKBConfig 更新知识库配置
-func (s *Service) UpdateKBConfig(ctx context.Context, kbID string, req *UpdateKBConfigRequest) error {
-	// 获取知识库
-	kb, err := s.repo.Knowledge.GetKnowledgeBaseByID(kbID)
-	if err != nil {
-		return fmt.Errorf("知识库不存在: %w", err)
-	}
-
-	// 更新配置 (使用 JSON 存储在 Metadata 字段中)
-	// 简化版：直接更新知识库的字段
-	if req.ChunkSize > 0 {
-		// 这里可以存储到配置中
-		_ = req.ChunkSize
-	}
-	if req.ChunkOverlap >= 0 {
-		// 这里可以存储到配置中
-		_ = req.ChunkOverlap
-	}
-	if len(req.Separators) > 0 {
-		// 这里可以存储到配置中
-		_ = req.Separators
-	}
-
-	// 更新知识库
-	kb.UpdatedAt = time.Now()
-	if err := s.repo.Knowledge.UpdateKnowledgeBase(kb); err != nil {
-		return fmt.Errorf("更新知识库配置失败: %w", err)
-	}
-
-	return nil
-}
-
-// GetKBConfig 获取知识库配置
-func (s *Service) GetKBConfig(ctx context.Context, kbID string) (map[string]interface{}, error) {
-	kb, err := s.repo.Knowledge.GetKnowledgeBaseByID(kbID)
-	if err != nil {
-		return nil, fmt.Errorf("知识库不存在: %w", err)
-	}
-
-	// 返回配置信息
-	config := map[string]interface{}{
-		"id":          kb.ID,
-		"name":        kb.Name,
-		"description": kb.Description,
-		"createdAt":   kb.CreatedAt,
-		"updatedAt":   kb.UpdatedAt,
-		// 可以添加更多配置字段
-	}
-
-	return config, nil
-}
-
-// InitializeByKBRequest 初始化知识库请求
-type InitializeByKBRequest struct {
-	ChunkSize    int      `json:"chunkSize"`
-	ChunkOverlap int      `json:"chunkOverlap"`
-	Separators   []string `json:"separators"`
-	EnableQA     bool     `json:"enableQA"`
-	QAPrompt     string   `json:"qaPrompt"`
-}
-
-// InitializeByKB 初始化知识库
-func (s *Service) InitializeByKB(ctx context.Context, kbID string, req *InitializeByKBRequest) error {
-	// 获取知识库
-	kb, err := s.repo.Knowledge.GetKnowledgeBaseByID(kbID)
-	if err != nil {
-		return fmt.Errorf("知识库不存在: %w", err)
-	}
-
-	// 更新知识库配置
-	kb.UpdatedAt = time.Now()
-	if err := s.repo.Knowledge.UpdateKnowledgeBase(kb); err != nil {
-		return fmt.Errorf("初始化知识库失败: %w", err)
-	}
-
-	return nil
 }
 
 // SystemInfo 系统信息

@@ -32,14 +32,14 @@ func NewLocalStorage(basePath, urlPrefix string) (*LocalStorage, error) {
 
 // Save 保存文件到本地
 func (s *LocalStorage) Save(ctx context.Context, req *SaveRequest) (string, error) {
-	// 生成文件路径: {basePath}/{tenantID}/{knowledgeID}/{uuid}.{ext}
+	// 生成文件路径: {basePath}/{tenantID}/{uuid}.{ext}
 	ext := filepath.Ext(req.FileName)
 	if ext == "" {
 		// 根据内容类型推断扩展名
 		ext = extensionByContentType(req.ContentType)
 	}
 	fileID := uuid.New().String()
-	relativePath := fmt.Sprintf("%s/%s/%s%s", req.TenantID, req.KnowledgeID, fileID, ext)
+	relativePath := fmt.Sprintf("%s/%s%s", req.TenantID, fileID, ext)
 	fullPath := filepath.Join(s.basePath, relativePath)
 
 	// 创建目录

@@ -57,18 +57,7 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 		}
 
 		// WeKnora API 兼容 - 聊天接口
-		v1.POST("/knowledge-chat/:session_id", h.Chat.KnowledgeChat)
 		v1.POST("/agent-chat/:session_id", h.Chat.AgentChat)
-		v1.POST("/knowledge-search", h.Chat.KnowledgeSearch)
-
-		// WeKnora API 兼容 - 知识管理
-		knowledge := v1.Group("/knowledge")
-		{
-			knowledge.GET("/batch", h.Knowledge.GetKnowledgeBatch)
-			knowledge.PUT("/tags", h.Knowledge.UpdateKnowledgeTags)
-			knowledge.GET("/:id/download", h.Knowledge.DownloadKnowledge)
-			knowledge.PUT("/image/:id/:chunk_id", h.Knowledge.UpdateImageInfo)
-		}
 
 		// Messages 消息管理（独立接口）
 		messages := v1.Group("/messages")
@@ -96,64 +85,6 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			agents.POST("/:id/stream", h.Agent.StreamAgent)
 		}
 
-		// Knowledge 知识库
-		kb := v1.Group("/knowledge-bases")
-		{
-			kb.POST("", h.Knowledge.CreateKnowledgeBase)
-			kb.GET("", h.Knowledge.ListKnowledgeBases)
-			kb.GET("/:id", h.Knowledge.GetKnowledgeBase)
-			kb.PUT("/:id", h.Knowledge.UpdateKnowledgeBase)
-			kb.DELETE("/:id", h.Knowledge.DeleteKnowledgeBase)
-			kb.POST("/:id/documents", h.Knowledge.UploadDocument)
-			kb.GET("/:id/documents", h.Knowledge.ListDocuments)
-
-			// 分块管理
-			kb.GET("/:id/chunks", h.Chunk.ListChunksByKnowledgeBaseID)
-			kb.DELETE("/:id/chunks", h.Chunk.DeleteChunksByKnowledgeBaseID)
-
-			// 标签管理
-			kb.POST("/:id/tags", h.Tag.CreateTag)
-			kb.GET("/:id/tags", h.Tag.ListTags)
-			kb.GET("/:id/tags/all", h.Tag.GetAllTags)
-			kb.GET("/:id/tags/:tag_id", h.Tag.GetTag)
-			kb.PUT("/:id/tags/:tag_id", h.Tag.UpdateTag)
-			kb.DELETE("/:id/tags/:tag_id", h.Tag.DeleteTag)
-
-			// 混合搜索（WeKnora API 兼容）
-			kb.GET("/:id/hybrid-search", h.Knowledge.HybridSearch)
-
-			// 复制知识库（WeKnora API 兼容）
-			kb.POST("/copy", h.Knowledge.CopyKnowledgeBase)
-			kb.GET("/copy/progress/:task_id", h.Knowledge.GetKBCloneProgress)
-		}
-
-		// Document 文档
-		docs := v1.Group("/documents")
-		{
-			docs.GET("/:id", h.Knowledge.GetDocument)
-			docs.DELETE("/:id", h.Knowledge.DeleteDocument)
-			docs.POST("/:id/process", h.Knowledge.ProcessDocument)
-
-			// 分块管理
-			docs.DELETE("/:doc_id/chunks", h.Chunk.DeleteChunksByDocumentID)
-		}
-
-		// Chunk 分块
-		chunks := v1.Group("/chunks")
-		{
-			chunks.GET("/:id", h.Chunk.GetChunkByID)
-			chunks.PUT("/:id", h.Chunk.UpdateChunk)
-			chunks.DELETE("/:id", h.Chunk.DeleteChunk)
-			// WeKnora API 兼容
-			chunks.DELETE("/questions/:chunk_id", h.Knowledge.DeleteQuestionsByChunk)
-		}
-
-		// Index 索引管理
-		index := v1.Group("/index")
-		{
-			index.POST("/chunks", h.Knowledge.CreateChunkIndex)
-		}
-
 		// Tool 工具
 		tools := v1.Group("/tools")
 		{
@@ -163,42 +94,6 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			tools.GET("/:id", h.Tool.GetTool)
 			tools.PUT("/:id", h.Tool.UpdateTool)
 			tools.DELETE("/:id", h.Tool.UnregisterTool)
-		}
-
-		// FAQ 常见问题
-		faqs := v1.Group("/faqs")
-		{
-			faqs.POST("", h.FAQ.CreateFAQ)
-			faqs.GET("", h.FAQ.ListFAQs)
-			faqs.GET("/active", h.FAQ.ListActiveFAQs)
-			faqs.GET("/search", h.FAQ.SearchFAQs)
-			faqs.GET("/:id", h.FAQ.GetFAQ)
-			faqs.PUT("/:id", h.FAQ.UpdateFAQ)
-			faqs.DELETE("/:id", h.FAQ.DeleteFAQ)
-		}
-
-		// FAQ Entry 增强版
-		faqEntries := v1.Group("/faq-entries")
-		{
-			faqEntries.POST("", h.FAQ.CreateEntry)
-			faqEntries.GET("", h.FAQ.ListEntries)
-			faqEntries.GET("/search", h.FAQ.SearchEntries)
-			faqEntries.GET("/export", h.FAQ.ExportEntries)
-			faqEntries.POST("/batch", h.FAQ.BatchUpsert)
-			faqEntries.GET("/import/:task_id/progress", h.FAQ.GetImportProgress)
-			faqEntries.PUT("/categories/batch", h.FAQ.UpdateEntryCategoryBatch)
-			faqEntries.PUT("/fields/batch", h.FAQ.UpdateEntryFieldsBatch)
-			faqEntries.DELETE("/batch", h.FAQ.DeleteEntries)
-			faqEntries.GET("/:id", h.FAQ.GetEntry)
-			faqEntries.PUT("/:id", h.FAQ.UpdateEntry)
-			faqEntries.DELETE("/:id", h.FAQ.DeleteEntry)
-		}
-
-		// RAG 检索
-		ragGroup := v1.Group("/rag")
-		{
-			ragGroup.POST("/retrieve", h.RAG.Retrieve)
-			ragGroup.GET("/search", h.RAG.RetrieveSimple)
 		}
 
 		// Initialization 初始化
@@ -213,18 +108,6 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			initGroup.GET("/ollama/download/progress/:task_id", h.Initialization.GetDownloadProgress)
 			initGroup.GET("/ollama/download/tasks", h.Initialization.ListDownloadTasks)
 			initGroup.POST("/ollama/download/cancel/:task_id", h.Initialization.CancelDownload)
-			initGroup.POST("/test/embedding", h.Initialization.TestEmbedding)
-			initGroup.POST("/models/remote/check", h.Initialization.CheckRemoteModel)
-			initGroup.POST("/models/rerank/check", h.Initialization.CheckRerankModel)
-			initGroup.GET("/kb/:kbId/config", h.Initialization.GetKBConfig)
-			initGroup.PUT("/kb/:kbId/config", h.Initialization.UpdateKBConfig)
-			initGroup.POST("/kb/:kbId", h.Initialization.InitializeByKB)
-
-			// 文本处理（WeKnora API 兼容）
-			initGroup.POST("/extract/text-relation", h.Initialization.ExtractTextRelations)
-			initGroup.POST("/extract/fabri-tag", h.Initialization.FabriTag)
-			initGroup.POST("/extract/fabri-text", h.Initialization.FabriText)
-			initGroup.POST("/multimodal/test", h.Initialization.TestMultimodal)
 		}
 
 		// Model 模型管理
@@ -236,16 +119,6 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			models.GET("/:id", h.Model.GetModel)
 			models.PUT("/:id", h.Model.UpdateModel)
 			models.DELETE("/:id", h.Model.DeleteModel)
-		}
-
-		// Evaluation 评估
-		eval := v1.Group("/evaluations")
-		{
-			eval.POST("", h.Evaluation.CreateEvaluation)
-			eval.GET("", h.Evaluation.ListEvaluations)
-			eval.GET("/result", h.Evaluation.GetEvaluationResult)
-			eval.DELETE("/:id", h.Evaluation.DeleteEvaluation)
-			eval.POST("/:id/cancel", h.Evaluation.CancelEvaluation)
 		}
 
 		// MCP 服务管理
@@ -287,23 +160,6 @@ func SetupRouter(h *handler.Handlers, svc *service.Services) *gin.Engine {
 			files.GET("/:id", h.File.GetFile)
 			files.GET("/:id/url", h.File.GetFileURL)
 			files.DELETE("/:id", h.File.DeleteFile)
-			files.GET("/knowledge/:knowledge_id", h.File.ListFilesByKnowledge)
-		}
-
-		// Dataset 数据集管理
-		datasets := v1.Group("/datasets")
-		{
-			datasets.POST("", h.Dataset.CreateDataset)
-			datasets.GET("", h.Dataset.ListDatasets)
-			datasets.GET("/:id", h.Dataset.GetDataset)
-			datasets.PUT("/:id", h.Dataset.UpdateDataset)
-			datasets.DELETE("/:id", h.Dataset.DeleteDataset)
-
-			// QA 对管理
-			datasets.POST("/:dataset_id/qapairs", h.Dataset.CreateQAPair)
-			datasets.POST("/:dataset_id/qapairs/batch", h.Dataset.CreateQAPairsBatch)
-			datasets.GET("/:dataset_id/qapairs", h.Dataset.GetQAPairs)
-			datasets.GET("/qapairs/:id", h.Dataset.GetQAPair)
 		}
 
 		// System 系统管理（WeKnora API 兼容）

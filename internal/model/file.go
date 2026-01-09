@@ -8,7 +8,6 @@ import (
 type StoredFile struct {
 	ID          string    `json:"id" gorm:"primaryKey"`
 	TenantID    string    `json:"tenant_id" gorm:"index"`
-	KnowledgeID string    `json:"knowledge_id" gorm:"index"`
 	FileName    string    `json:"file_name"`
 	FileSize    int64     `json:"file_size"`
 	ContentType string    `json:"content_type"`

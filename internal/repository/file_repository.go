@@ -30,19 +30,7 @@ func (r *FileRepository) GetByID(id string) (*model.StoredFile, error) {
 	return &file, nil
 }
 
-// GetByKnowledgeID 获取知识库的所有文件
-func (r *FileRepository) GetByKnowledgeID(knowledgeID string) ([]*model.StoredFile, error) {
-	var files []*model.StoredFile
-	err := r.db.Where("knowledge_id = ?", knowledgeID).Find(&files).Error
-	return files, err
-}
-
 // Delete 删除文件记录
 func (r *FileRepository) Delete(id string) error {
 	return r.db.Delete(&model.StoredFile{}, "id = ?", id).Error
-}
-
-// DeleteByKnowledgeID 删除知识库的所有文件记录
-func (r *FileRepository) DeleteByKnowledgeID(knowledgeID string) error {
-	return r.db.Delete(&model.StoredFile{}, "knowledge_id = ?", knowledgeID).Error
 }
